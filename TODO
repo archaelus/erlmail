@@ -1,0 +1,17 @@
+ErlMail To-DO List
+
+IMAP Client
+* Impliment AUTHENTICATE command
+* Impliment STARTTLS command
+* Impliment THREAD extentions
+
+IMAP Server
+
+SMTP Client
+
+SMTP Server
+
+POP3 Client
+* Scheduled before ErlMail-0.0.7
+
+POP3 Server

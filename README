@@ -1,0 +1,21 @@
+README erlmail-0.0.5
+
+
+%% =====================================================================
+This is the fifth release of ErlMail, as such it is incomplete and 
+possibly unstable.
+
+
+Please check the HISTORY and TODO files for more information on the 
+current status of new features or known bugs.
+
+%% =====================================================================
+
+Currently ErlMail is dependant on util-0.0.1 which is also availabe for 
+download form http://www.erlmail.com, Mostly for some date/time funcations
+This dependancy will be removed in later versions.
+
+%% =====================================================================
+
+Please direct any comments or patches to sjackson@simpleenigma.com with
+ErlMail in the subject line.
