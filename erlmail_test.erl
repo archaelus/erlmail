@@ -1,7 +1,7 @@
 %%%----------------------------------------------------------------------
 %%% File        : smtpc_fsm
 %%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
-%%% Purpose     : ErlMail Test funcations
+%%% Purpose     : ErlMail Test functions
 %%% Created     : 2006-12-14
 %%% Initial Rel : 0.0.1
 %%% Updated     : 2007-10-18
