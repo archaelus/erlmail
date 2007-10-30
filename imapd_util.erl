@@ -19,6 +19,7 @@
 -export([flags_resp/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([heirachy_char/0]).
+-export([seq_to_list/1,list_to_seq/1]).
 
 
 
@@ -256,6 +257,54 @@ clean(String) ->
 	S = string:strip(String,both,32),
 	S2 = string:strip(S,both,34),
 	string:strip(S2,both,32).
+
+
+seq_to_list([I|_] = Seq) when is_integer(I) -> seq_to_list(string:tokens(Seq,","));
+seq_to_list(Seq) -> seq_to_list(Seq,[]).
+
+seq_to_list([],Acc) -> lists:flatten(lists:reverse(Acc));
+seq_to_list([H|T],Acc) ->
+	case catch list_to_integer(H) of
+		Int when is_integer(Int) -> seq_to_list(T,[Int|Acc]);
+		_ ->
+			[S,E] = string:tokens(H,":"),
+			Start = list_to_integer(S),
+			End = list_to_integer(E),
+			seq_to_list(T,[lists:seq(Start,End)|Acc])
+	end.
+
+list_to_seq(List) -> list_to_seq(List,0,[]).
+list_to_seq([],_,Acc) -> lists:flatten(lists:reverse(Acc));
+
+
+list_to_seq([H],Start,Acc) when is_integer(H), Start > 0 ->
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
+	list_to_seq([],0,[String|Acc]);
+
+list_to_seq([H],_,Acc) when is_integer(H) ->
+	list_to_seq([],0,[integer_to_list(H)|Acc]);
+list_to_seq([H|[I|_] = T],Start,Acc) when H == I - 1, Start == 0 ->
+	list_to_seq(T,H,Acc);
+
+list_to_seq([H|[I] = _T],Start,Acc) when H == I - 1, is_integer(I) ->
+	?D({Start,H,I}),
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(I),
+	list_to_seq([],Start,[String|Acc]);
+
+list_to_seq([H|[I|_J] = T],Start,Acc) when H == I - 1 ->
+	list_to_seq(T,Start,Acc);
+
+list_to_seq([H|[I|_J] = T],Start,Acc) when H /= I - 1, Start > 0 ->
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
+	list_to_seq(T,0,[44,String|Acc]);
+
+
+list_to_seq([H|[_I|_] = T],_Start,Acc) ->
+	list_to_seq(T,0,[44,integer_to_list(H)|Acc]).
+
+
+
+
 
 
 
