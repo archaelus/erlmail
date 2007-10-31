@@ -20,7 +20,7 @@
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([heirachy_char/0]).
 -export([seq_to_list/1,list_to_seq/1]).
-
+-export([quote/1,quote/2]).
 
 
 parse(Line) ->
@@ -248,6 +248,33 @@ heirachy_char() ->
 		[] -> "/";
 		Heirarchy -> Heirarchy
 	end.
+
+
+
+
+
+quote(String) -> quote(String,optional).
+
+quote(String,true)     -> [34] ++ String ++ [34];
+quote(String,optional) -> 
+	case string:chr(String,32) of
+		0 -> String;
+		_ -> [34] ++ String ++ [34]
+	end;
+quote(String,false)    -> String;
+quote(String,_UnKnown) -> String.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
