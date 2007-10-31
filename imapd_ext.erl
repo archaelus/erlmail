@@ -14,24 +14,41 @@
 -export([capability/0]).
 
 
-% Check and verify extentions and return capability string
+%%-------------------------------------------------------------------------
+%% @spec () -> string()
+%% @doc Check and verify extentions and return capability string
+%% @end
+%%-------------------------------------------------------------------------
 capability() ->
 	Cap = lists:foldl(fun({_M,Ext},Acc) -> [32,http_util:to_upper(atom_to_list(Ext))|Acc] 
 		end,[32,"IMAP4rev1"],list()),
 	string:strip(lists:flatten(lists:reverse(Cap))).
 
-
+%%-------------------------------------------------------------------------
+%% @spec (Key::atom()) -> {ok,tuple()} | {error,atom()}
+%% @doc Check to see if extention is in the config file
+%% @end
+%%-------------------------------------------------------------------------
 check(Key) ->
 	case lists:keysearch(Key,2,list()) of
 		{value,{Module,Function}} -> {ok,Module,Function};
 		_ -> {error,extention_not_found}
 	end.
 
+%%-------------------------------------------------------------------------
+%% @spec () -> list()
+%% @doc List all verified extentions from config file
+%% @end
+%%-------------------------------------------------------------------------
 
-% get potential extentions from config file and verify before returning list
 list() -> list(erlmail_conf:lookup(server_imap_extentions)).
-list(String) -> 
-	Tokens = string:tokens(String,[32]),
+%%-------------------------------------------------------------------------
+%% @spec (ExtentionList::list()) -> list()
+%% @doc List all verified extentions from ExtentionList
+%% @end
+%%-------------------------------------------------------------------------
+list(ExtentionList) -> 
+	Tokens = string:tokens(ExtentionList,[32]),
 	Ext = lists:map(fun(Ext) -> 
 		case string:tokens(Ext,[58]) of
 			[M,F] -> {list_to_atom(M),list_to_atom(F)};
@@ -46,8 +63,11 @@ list(String) ->
 		end,[],Ext).
 	
 
-
-%% Verify that Module:Function/2 exists
+%%-------------------------------------------------------------------------
+%% @spec (Module::atom(),Funcation::atom()) -> bool()
+%% @doc Verify that Module:Function/2 exists in Erlang path
+%% @end
+%%-------------------------------------------------------------------------
 verify(Module,Function) ->
 	case code:get_object_code(Module) of
 		{Module,_Obj,BeamPath} ->

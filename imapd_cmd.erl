@@ -66,14 +66,14 @@ command(#imap_cmd{tag = Tag, cmd = logout = Command, data = Data}, State) ->
 %%% STARTTLS - Not Authenticated
 %%%-------------------------
 
-% TODO: STARTTLS impliment command
+% @todo STARTTLS impliment command
 
 
 %%%-------------------------
 %%% AUTHENTICATE - Not Authenticated
 %%%-------------------------
 
-% TODO: AUTHENTICATE impliment command
+% @todo AUTHENTICATE impliment command
 
 
 %%%-------------------------
@@ -129,12 +129,12 @@ command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},#imapd_
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
 			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},State),
 			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},State),
-			% TODO: Clean up Flag processing - figure out where to store data
+			% @todo Clean up Flag processing - figure out where to store data
 			imapd_util:send(#imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},State),
-			% TODO: Clean up PermanentFlag processing - figure out where to store data
+			% @todo Clean up PermanentFlag processing - figure out where to store data
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},State),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"},State),
 			State#imapd_fsm{state = selected, mailbox = MailBoxStore};
@@ -164,12 +164,12 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},#imapd
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
 			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},State),
 			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},State),
-			% TODO: Clean up Flag processing - figure out where to store data
+			% @todo Clean up Flag processing - figure out where to store data
 			imapd_util:send(#imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},State),
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},State),
-			% TODO: Clean up PermanentFlag processing - figure out where to store data
+			% @todo Clean up PermanentFlag processing - figure out where to store data
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},State),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, code = 'read-only', cmd = Command, info = "Completed"},State),
 			State#imapd_fsm{state = selected, mailbox = MailBoxStore};
@@ -195,10 +195,10 @@ command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({Data,User#user.name}) of
 		[] -> 
-			% TODO: CREATE Check for and clear trailing hierarchy seprator
-			% TODO: CREATE parent mailboxes
-			% TODO: CREATE UIDVALIDITY for mailbox
-			% TODO: CREATE check previosuly deleted forlder info for MAX UID
+			% @todo CREATE Check for and clear trailing hierarchy seprator
+			% @todo CREATE parent mailboxes
+			% @todo CREATE UIDVALIDITY for mailbox
+			% @todo CREATE check previosuly deleted forlder info for MAX UID
 			{UserName,DomainName} = User#user.name,
 			Store:insert(#mailbox_store{name={Data,UserName,DomainName}}),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
@@ -229,10 +229,10 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 			 imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: Cannot delete INBOX"},State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
 			{UserName,DomainName} = User#user.name,
-			% TODO: DELETE messages and cleanup
-			% TODO: DELETE check for \noselect flag; error
-			% TODO: DELETE check for sub folders; remove mail and set \noselect leave folder
-			% TODO: DELETE maintain list of Max UID for deleted folders incase of recreation
+			% @todo DELETE messages and cleanup
+			% @todo DELETE check for \noselect flag; error
+			% @todo DELETE check for sub folders; remove mail and set \noselect leave folder
+			% @todo DELETE maintain list of Max UID for deleted folders incase of recreation
 			?D({delete,MailBoxName,UserName,DomainName}),
 			Store:delete(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
@@ -267,10 +267,10 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 		{_,DstMB} when is_record(DstMB,mailbox_store) -> 
 			imapd_util:send(#imap_resp{tag = Tag, status = no},State);
 		{SrcMB,[]} ->
-			% TODO: RENAME any sub folders
-			% TODO: RENAME create any parent folders
-			% TODO: RENAME maintain list of Max UID for renamed folders incase of recreation
-			% TODO: RENAME INBOX special case. Move Mail, but do not delete INBOX. Leave subfolders alone
+			% @todo RENAME any sub folders
+			% @todo RENAME create any parent folders
+			% @todo RENAME maintain list of Max UID for renamed folders incase of recreation
+			% @todo RENAME INBOX special case. Move Mail, but do not delete INBOX. Leave subfolders alone
 			{_,UserName,DomainName} = SrcMB#mailbox_store.name,
 			NewMB = SrcMB#mailbox_store{name = {Dst,UserName,DomainName}},
 			Store:insert(NewMB),
@@ -334,13 +334,13 @@ command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
 %%% LIST - Authenticated
 %%%-------------------------
 
-% TODO: LIST impliment command
+% @todo LIST impliment command
 
 %%%-------------------------
 %%% LSUB - Authenticated
 %%%-------------------------
 
-% TODO: LSUB impliment command
+% @todo LSUB impliment command
 
 %%%-------------------------
 %%% STATUS - Authenticated
@@ -365,7 +365,7 @@ command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}}
 			StatusFlags = imapd_util:status_flags(Flags),
 			MailBoxInfo = imapd_util:mailbox_info(MailBox,StatusFlags),
 			StatusInfo  = imapd_util:status_info(MailBoxInfo,StatusFlags),
-			% TODO: Process each flag and build data to return
+			% @todo Process each flag and build data to return
 			Status = {status,MailBoxName,StatusInfo},
 			imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Status},State),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
@@ -380,7 +380,7 @@ command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}}
 %%% APPEND - Authenticated
 %%%-------------------------
 
-% TODO: APPEND impliment command
+% @todo APPEND impliment command
 
 
 %%%-------------------------
@@ -416,7 +416,7 @@ command(#imap_cmd{tag = Tag, cmd = close = Command},
 command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
 		#imapd_fsm{state = selected} = State) -> 
 	imapd_util:out(Command,State),
-	% TODO: CLOSE If read-write then expunge, else don't - need expunge funcation
+	% @todo CLOSE If read-write then expunge, else don't - need expunge funcation
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox = [], state = authenticated};
 command(#imap_cmd{tag = Tag, cmd = close = Command}, State) -> 
@@ -428,19 +428,19 @@ command(#imap_cmd{tag = Tag, cmd = close = Command}, State) ->
 %%% EXPUNGE - Authenticated
 %%%-------------------------
 
-% TODO: EXPUNGE impliment command
+% @todo EXPUNGE impliment command
 
 %%%-------------------------
 %%% SEARCH - Authenticated
 %%%-------------------------
 
-% TODO: SEARCH impliment command
+% @todo SEARCH impliment command
 
 %%%-------------------------
 %%% FETCH - Authenticated
 %%%-------------------------
 
-% TODO: FETCH impliment command
+% @todo FETCH impliment command
 
 %%%-------------------------
 %%% STORE - Selected
@@ -457,8 +457,8 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) ->
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = authenticated, user = _User} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
 	_Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
-	% TODO: STORE Evaluate Seq
-	% TODO: STORE Loop Through Seq and perform each action for the flags
+	% @todo STORE Evaluate Seq
+	% @todo STORE Loop Through Seq and perform each action for the flags
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State;
 
@@ -466,13 +466,13 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 %%% COPY - Authenticated
 %%%-------------------------
 
-% TODO: COPY impliment command
+% @todo COPY impliment command
 
 %%%-------------------------
 %%% UID - Authenticated
 %%%-------------------------
 
-% TODO: UID impliment command
+% @todo UID impliment command
 
 
 

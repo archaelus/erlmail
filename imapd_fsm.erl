@@ -31,15 +31,7 @@
 %%% API
 %%%------------------------------------------------------------------------
 
-%%-------------------------------------------------------------------------
-%% @spec (Socket) -> {ok,Pid} | ignore | {error,Error}
-%% @doc To be called by the supervisor in order to start the server.
-%%      If init/1 fails with Reason, the function returns {error,Reason}.
-%%      If init/1 returns {stop,Reason} or ignore, the process is
-%%      terminated and the function returns {error,Reason} or ignore,
-%%      respectively.
-%% @end
-%%-------------------------------------------------------------------------
+
 start_link() ->
     gen_fsm:start_link(?MODULE, [], []).
 

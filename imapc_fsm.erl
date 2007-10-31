@@ -59,7 +59,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 	Cmd = Tag ++ [32] ++ "NOOP",
 	LowerTag = imapc_util:to_low_atom(Tag),
 	imapc_util:write(Socket,Cmd),
-	% %TODO: process extra return values for more data. Example: Checking new mail
+	% %@todo process extra return values for more data. Example: Checking new mail
 	case imapc_util:response(Socket,Tag) of
 		[#imap_resp{status = ok, tag = LowerTag}]  -> {reply,{ok,noop_successful},'IMAP_CMD',State};
 		[#imap_resp{status = no, tag = LowerTag}]  -> {reply,{error,noop_failed},'IMAP_CMD',State};
@@ -126,14 +126,14 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 %%%----------------------------------------------------------------------
 %%% AUTHENTICATE Command - Not Authenticated State - NOT IMPLIMENTED YET
 %%%----------------------------------------------------------------------
-%TODO: impliment
+%@todo impliment
 'IMAP_CMD'({authenticate,_Tag,_AuthMech}, _From, State) -> 
 	{reply,{error,not_implimented_use_login},'IMAP_CMD',State};
 
 %%%----------------------------------------------------------------------
 %%% STARTTLS Command - Not Authenticated State - NOT IMPLIMENTED YET 
 %%%----------------------------------------------------------------------
-%TODO: impliment
+%@todo impliment
 'IMAP_CMD'({starttls,_Tag}, _From, State) -> 
 	{reply,{error,not_implimented_use_login},'IMAP_CMD',State};
 
@@ -432,7 +432,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 %%%----------------------------------------------------------------------
 %%% FETCH Command - Selected
 %%%----------------------------------------------------------------------
-%TODO: some longer fetch responses are not being processes properly by the parser
+%@todo some longer fetch responses are not being processes properly by the parser
 'IMAP_CMD'({fetch,Tag,Set,Query}, _From, #imapc_fsm{state=selected, socket = Socket} = State) -> 
 	Cmd = Tag ++ [32] ++ "FETCH" ++ [32] ++ Set ++ [32] ++ Query,
 	LowerTag = imapc_util:to_low_atom(Tag),
@@ -464,7 +464,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 	LowerTag = imapc_util:to_low_atom(Tag),
 	imapc_util:write(Socket,Cmd),
 	Resp = imapc_util:response(Socket,Tag),
-	%% TODO: Process rest of command for extra responses
+	%% @todo Process rest of command for extra responses
 	Last = lists:last(Resp),
 	case Last of
 		#imap_resp{status = ok, tag = LowerTag} -> {reply,{ok,store_successful},'IMAP_CMD',State};
@@ -496,7 +496,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 	{reply,{error,wrong_state},'IMAP_CMD',State};
 
 %%%----------------------------------------------------------------------
-%%% UID Command - Selected - UNTESTED TODO: test this set of functions
+%%% UID Command - Selected - UNTESTED @todo test this set of functions
 %%%----------------------------------------------------------------------
 
 
@@ -536,7 +536,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 	LowerTag = imapc_util:to_low_atom(Tag),
 	imapc_util:write(Socket,Cmd),
 	Resp = imapc_util:response(Socket,Tag),
-	%% TODO: Process rest of command for extra responses
+	%% @todo Process rest of command for extra responses
 	Last = lists:last(Resp),
 	case Last of
 		#imap_resp{status = ok, tag = LowerTag} -> {reply,{ok,uid_store_successful},'IMAP_CMD',State};
@@ -587,7 +587,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 %%%----------------------------------------------------------------------
 %%% SORT Command - Selected - EXTENSION - NOT YET IMPLIMENTED
 %%%----------------------------------------------------------------------
-% TODO: impliment
+% @todo impliment
 'IMAP_CMD'({sort,_Tag,_Order,_Query,_Charset}, From, #imapc_fsm{state=not_authenticated} = State) -> 
 	gen_fsm:reply(From,{error,preauth}), % Send Preauth error 
 	{reply,ok,'IMAP_CMD',State};

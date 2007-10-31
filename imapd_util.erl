@@ -1,27 +1,232 @@
 %%%----------------------------------------------------------------------
-%%% File        : imapd_util
-%%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
-%%% Purpose     : IMAP server utility funcations
-%%% Created     : 2007-10-27
-%%% Initial Rel : 0.0.6
-%%% Updated     : 2007-10-27
+%%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
+%%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc        IMAP server utility functions
+%%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @version    0.0.6
+%%% @since      0.0.6
+%%% @end
 %%%----------------------------------------------------------------------
 -module(imapd_util).
 -author('sjackson@simpleenigma.com').
 -include("imap.hrl").
 -include("erlmail.hrl").
 
--export([parse/1,clean/1]).
--export([split_at/1,split_at/2]).
--export([send/2,out/2,out/3]).
--export([mailbox_info/1,mailbox_info/2,mailbox_info/3]).
--export([greeting_capability/1,greeting/1]).
--export([flags_resp/2]).
--export([status_flags/1,status_resp/1,status_info/2]).
--export([heirachy_char/0]).
--export([seq_to_list/1,list_to_seq/1]).
--export([quote/1,quote/2,unquote/1]).
 
+-export([clean/1]).
+-export([flags_resp/1,flags_resp/2]).
+-export([greeting/1,greeting_capability/1]).
+-export([heirachy_char/0,inbox/1]).
+-export([mailbox_info/1,mailbox_info/2,mailbox_info/3]).
+-export([out/2,out/3,send/2]).
+-export([parse/1]).
+-export([quote/1,quote/2,unquote/1]).
+-export([response/1]).
+-export([split_at/1,split_at/2]).
+-export([status_flags/1,status_resp/1,status_info/2]).
+-export([seq_to_list/1,list_to_seq/1]).
+
+%%-------------------------------------------------------------------------
+%% @spec clean(String::string()) -> string()
+%% @doc Removes whitespace and Doule Quotes from a string.
+%% @end
+%%-------------------------------------------------------------------------
+clean({UserName,Password}) ->
+	{clean(UserName),clean(Password)};
+
+clean(String) ->
+	S = string:strip(String,both,32),
+	S2 = string:strip(S,both,34),
+	string:strip(S2,both,32).
+
+%%-------------------------------------------------------------------------
+%% @spec flags_resp(list()) -> string()
+%% @doc Takes a list of flags and returns a response string.
+%% @end
+%%-------------------------------------------------------------------------
+flags_resp([]) -> "()";
+flags_resp(List) -> flags_resp(List,[]).
+%%-------------------------------------------------------------------------
+%% @spec flags_resp(list(),list()) -> string()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+flags_resp([H|T],Acc) when is_atom(H) ->
+	flags_resp(T,[http_util:to_upper(atom_to_list(H)),92,32|Acc]);
+flags_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
+
+%%-------------------------------------------------------------------------
+%% @spec greeting(Options::list()) -> string()
+%% @doc Returns IMAP greeting string from config file or uses Default.
+%% @end
+%%-------------------------------------------------------------------------
+greeting(State) when is_record(State,imapd_fsm) -> greeting(State#imapd_fsm.options);
+greeting(Options) ->
+	case erlmail_conf:lookup(server_imap_greeting,Options) of
+		[] -> "ErlMail IMAP4 Server ready";
+		Greeting -> Greeting
+	end.
+
+%%-------------------------------------------------------------------------
+%% @spec (Options::list()) -> string()
+%% @doc Check if capability data should be returned in greeting. 
+%%      Default: false
+%% @end
+%%-------------------------------------------------------------------------
+greeting_capability(State) when is_record(State,imapd_fsm) -> greeting_capability(State#imapd_fsm.options);
+greeting_capability(Options) ->
+	case erlmail_conf:lookup_atom(server_imap_greeting_capability,Options) of
+		true -> true;
+		_ -> false
+	end.
+
+%%-------------------------------------------------------------------------
+%% @spec () -> string()
+%% @doc Gets Heirarchy chara from config file.
+%%      Default: "/"
+%% @end
+%%-------------------------------------------------------------------------
+heirachy_char() ->
+	case erlmail_conf:lookup(server_imap_hierarchy) of
+		[] -> "/";
+		Heirarchy -> Heirarchy
+	end.
+
+%%-------------------------------------------------------------------------
+%% @spec (MailBoxName::string()) -> string()
+%% @doc Make sure that the string INBOX is always capitalized at the 
+%%      begining of the mailbox name
+%% @todo work with longer mailbox names that start with INBOX
+%% @end
+%%-------------------------------------------------------------------------
+
+inbox(MailBoxName) ->
+	case list_to_atom(http_util:to_lower(MailBoxName)) of
+		inbox -> "INBOX";
+		_ -> MailBoxName
+	end.
+
+%%-------------------------------------------------------------------------
+%% @spec (List::list()) -> string()
+%% @doc Converts a list of integers into an IMAP sequence
+%% @end
+%%-------------------------------------------------------------------------
+list_to_seq(List) -> list_to_seq(List,0,[]).
+
+%%-------------------------------------------------------------------------
+%% @spec (list(),integer(),list()) -> string()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+list_to_seq([],_,Acc) -> lists:flatten(lists:reverse(Acc));
+list_to_seq([H],Start,Acc) when is_integer(H), Start > 0 ->
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
+	list_to_seq([],0,[String|Acc]);
+list_to_seq([H],_,Acc) when is_integer(H) ->
+	list_to_seq([],0,[integer_to_list(H)|Acc]);
+list_to_seq([H|[I|_] = T],Start,Acc) when H == I - 1, Start == 0 ->
+	list_to_seq(T,H,Acc);
+list_to_seq([H|[I] = _T],Start,Acc) when H == I - 1, is_integer(I) ->
+	?D({Start,H,I}),
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(I),
+	list_to_seq([],Start,[String|Acc]);
+list_to_seq([H|[I|_J] = T],Start,Acc) when H == I - 1 ->
+	list_to_seq(T,Start,Acc);
+list_to_seq([H|[I|_J] = T],Start,Acc) when H /= I - 1, Start > 0 ->
+	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
+	list_to_seq(T,0,[44,String|Acc]);
+list_to_seq([H|[_I|_] = T],_Start,Acc) ->
+	list_to_seq(T,0,[44,integer_to_list(H)|Acc]).
+
+
+
+
+%%-------------------------------------------------------------------------
+%% @spec (tuple()) -> tuple()
+%% @doc Takes a #mailbox_store{} record and returns all information in a 
+%%      #mailbox{} record
+%% @end
+%%-------------------------------------------------------------------------
+mailbox_info(MailBoxStore) -> mailbox_info(MailBoxStore,all).
+
+%%-------------------------------------------------------------------------
+%% @spec (tuple(),Flags::list()) -> tuple()
+%% @doc Takes a #mailbox_store{} record and returns information from Flags
+%%      in a #mailbox{} record
+%% @end
+%%-------------------------------------------------------------------------
+mailbox_info(MailBoxStore,Args) when is_record(MailBoxStore,mailbox_store) -> 
+	{MailBoxName,UserName,DomainName} = MailBoxStore#mailbox_store.name,
+	mailbox_info(#mailbox{name = MailBoxName},{UserName,DomainName},Args);
+mailbox_info(MailBox,{UserName,DomainName}) -> mailbox_info(MailBox,{UserName,DomainName},all).
+%%-------------------------------------------------------------------------
+%% @spec (tuple(),tuple(),Flags::list()) -> tuple()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+
+mailbox_info(MailBox,{UserName,DomainName},all) -> mailbox_info(MailBox,{UserName,DomainName},[exists,messages,unseen,recent,flags,permanentflags]);
+
+mailbox_info(MailBox,{UserName,DomainName},[exists|T]) ->
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
+		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
+		MailBoxStore -> mailbox_info(MailBox#mailbox{exists=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
+	end;
+mailbox_info(MailBox,{UserName,DomainName},[messages|T]) ->
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
+		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
+		MailBoxStore -> mailbox_info(MailBox#mailbox{messages=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
+	end;
+mailbox_info(MailBox,{UserName,DomainName},[unseen|T]) ->
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	case Store:unseen({MailBox#mailbox.name,UserName,DomainName}) of
+		{_Seen,Unseen} ->  mailbox_info(MailBox#mailbox{unseen=length(Unseen)},{UserName,DomainName},T);
+		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
+	end;
+mailbox_info(MailBox,{UserName,DomainName},[recent|T]) ->
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	case Store:recent({MailBox#mailbox.name,UserName,DomainName}) of
+		Recent when is_list(Recent) ->  mailbox_info(MailBox#mailbox{recent=length(Recent)},{UserName,DomainName},T);
+		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
+	end;
+mailbox_info(MailBox,{UserName,DomainName},[flags|T]) ->
+	mailbox_info(MailBox#mailbox{flags=[answered,flagged,draft,deleted,seen]},{UserName,DomainName},T);
+% @todo UIDNEXT
+% @todo UIDVALIDITY
+
+
+mailbox_info(MailBox,{UserName,DomainName},[_H|T]) ->
+	?D(_H),
+	mailbox_info(MailBox,{UserName,DomainName},T);
+
+mailbox_info(MailBox,{_UserName,_DomainName},[]) -> MailBox.
+
+
+%%-------------------------------------------------------------------------
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+out(Command,State) -> io:format("~p ~p~n",[State#imapd_fsm.addr,Command]).
+%%-------------------------------------------------------------------------
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+out(Command,Param,State) -> io:format("~p ~p ~p~n",[State#imapd_fsm.addr,Command,Param]).
+
+%%-------------------------------------------------------------------------
+%% @spec parse(Line::string()) -> imap_cmd()
+%% @type imap_cmd() = {imap_cmd,line(),tag(),comamnd(),cmd_data()}
+%% @type line() = string()
+%% @type command() = atom()
+%% @type tag() = atom()
+%% @type cmd_data() = term()
+%% @doc Takes a command line from the connected IMAP client and parses the 
+%%      it into an imap_cmd{} record
+%% @todo parse DATA differently depending on command
+%% @end
+%%-------------------------------------------------------------------------
 
 parse(Line) ->
 	case split_at(Line,32) of
@@ -35,7 +240,6 @@ parse(Line) ->
 				{Command,Data} -> ok
 			end
 	end,
-	% TODO: parse DATA differently depending on command
 	NextData = case list_to_atom(string:strip(http_util:to_lower(Command))) of
 		Cmd = login       -> clean(split_at(Data,32));
 		Cmd = select      -> clean(inbox(Data));
@@ -58,21 +262,45 @@ parse(Line) ->
 		cmd  = Cmd,
 		data = NextData}.
 
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> string()
+%% @doc Determines if the given string needs to have Double Quotes
+%%      around it or not
+%% @end
+%%-------------------------------------------------------------------------
 
-split_at(String) -> split_at(String,32).
-split_at(String,Chr) -> 
-	case string:chr(String, Chr) of
-		0 -> {String,[]};
-		Pos -> 
-			case lists:split(Pos,String) of
-				{One,Two} -> {string:strip(One),Two};
-				Other -> Other
-			end
-	end.
+quote([]) -> [34,34];
+quote(String) -> quote(String,optional).
 
+%%-------------------------------------------------------------------------
+%% @spec (String::string(),Options::quoteoptions()) -> string()
+%% @type quoteoptions() = true | false | optional
+%% @doc Determines if the given string needs to have Double Quotes
+%%      around it or not based on the given options. Default = false
+%% @end
+%%-------------------------------------------------------------------------
 
+quote(String,true)     -> [34] ++ String ++ [34];
+quote(String,optional) -> 
+	case string:chr(String,32) of
+		0 -> String;
+		_ -> [34] ++ String ++ [34]
+	end;
+quote(String,false)    -> String;
+quote(String,_UnKnown) -> String.
 
+%%-------------------------------------------------------------------------
+%% @spec response(imap_resp()) -> string()
+%% @type imap_resp() = {imap_resp,record}
+%% @doc Take an #imap_resp{} record and returns a response string
+%% @end
+%%-------------------------------------------------------------------------
 response(Resp) when is_record(Resp,imap_resp) -> response(Resp,[]).
+%%-------------------------------------------------------------------------
+%% @spec response(imap_resp(),list()) -> string()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
 %% TAG
 response(#imap_resp{_ = []} = _Resp,Acc) -> string:strip(lists:flatten(lists:reverse(Acc)));
 response(#imap_resp{tag = Tag} = Resp,Acc) when is_atom(Tag), Tag /= [] -> 
@@ -123,29 +351,97 @@ response(Resp,Acc) ->
 	?D({Resp,Acc}),
 	{error,unkown_response}.
 
+%%-------------------------------------------------------------------------
+%% @spec (Message::string(),Socket::port()) -> ok | {error,string()}
+%% @doc Sends a Message to Socket adds CRLF if needed.
+%% @end
+%%-------------------------------------------------------------------------
+send(Resp,State) when is_record(Resp,imap_resp)  -> send(response(Resp),State);
+send(Msg,State)  when is_record(State,imapd_fsm) -> send(Msg,State#imapd_fsm.socket);
+send(Message,Socket) ->
+%	?D(Message),
+	Msg = case string:right(Message,2) of
+		?CRLF -> [Message];
+		_      -> [Message,?CRLF]
+	end,
+%	?D(Msg),
+	gen_tcp:send(Socket,Msg).
 
-flags_resp([]) -> "()";
-flags_resp(List) -> flags_resp(List,[]).
-flags_resp([H|T],Acc) when is_atom(H) ->
-	flags_resp(T,[http_util:to_upper(atom_to_list(H)),92,32|Acc]);
-flags_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
-	
-status_resp([]) -> "()";
-status_resp(List) -> status_resp(List,[]).
-
-status_resp([{Type,Info}|T],Acc) ->
-	status_resp(T,[32,integer_to_list(Info),32,http_util:to_upper(atom_to_list(Type))|Acc]);
-status_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
 
 
+
+
+
+
+
+%%-------------------------------------------------------------------------
+%% @spec (Sequence::string()) -> list()
+%% @doc Converts an IMAP sequence string into a lsit of intgers
+%% @end
+%%-------------------------------------------------------------------------
+seq_to_list([I|_] = Seq) when is_integer(I) -> seq_to_list(string:tokens(Seq,","));
+seq_to_list(Seq) -> seq_to_list(Seq,[]).
+%%-------------------------------------------------------------------------
+%% @spec (Sequence::string(),list()) -> list()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+seq_to_list([],Acc) -> lists:flatten(lists:reverse(Acc));
+seq_to_list([H|T],Acc) ->
+	case catch list_to_integer(H) of
+		Int when is_integer(Int) -> seq_to_list(T,[Int|Acc]);
+		_ ->
+			[S,E] = string:tokens(H,":"),
+			Start = list_to_integer(S),
+			End = list_to_integer(E),
+			seq_to_list(T,[lists:seq(Start,End)|Acc])
+	end.
+
+
+%%-------------------------------------------------------------------------
+%% @spec split_at(String::string()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the first SPACE (chr(32))
+%% @end
+%%-------------------------------------------------------------------------
+split_at(String) -> split_at(String,32).
+%%-------------------------------------------------------------------------
+%% @spec split_at(String::string(),Chr::char()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the first instace of Chr
+%% @end
+%%-------------------------------------------------------------------------
+split_at(String,Chr) -> 
+	case string:chr(String, Chr) of
+		0 -> {String,[]};
+		Pos -> 
+			case lists:split(Pos,String) of
+				{One,Two} -> {string:strip(One),Two};
+				Other -> Other
+			end
+	end.
+
+%%-------------------------------------------------------------------------
+%% @spec status_flags(string()) -> list()
+%% @doc Takes a string os status requests and returns a list of 
+%%      status requests
+%% @end
+%%-------------------------------------------------------------------------
 status_flags(String) ->
 	Tokens = string:tokens(String," ()"),
 	lists:map(fun(S) -> list_to_atom(http_util:to_lower(S)) end,Tokens).
 
-
+%%-------------------------------------------------------------------------
+%% @spec status_info(MailBoxInfo::tuple(),List::list()) -> list()
+%% @doc Takes a list of status flags or a status string and returns 
+%%      information for each requested flag
+%% @end
+%%-------------------------------------------------------------------------
 status_info(MailBoxInfo,[H|_] = List) when is_integer(H) -> status_info(MailBoxInfo,status_flags(List));
 status_info(MailBoxInfo,[H|_] = List) when is_atom(H) -> status_info(MailBoxInfo,List,[]).
-
+%%-------------------------------------------------------------------------
+%% @spec status_info(tuple(),list(),list()) -> list()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
 status_info(#mailbox{messages = Messages} = MailBoxInfo,[messages|T],Acc) ->
 	status_info(MailBoxInfo,T,[{messages, Messages}|Acc]);
 status_info(#mailbox{recent = Recent} = MailBoxInfo,[recent|T],Acc) ->
@@ -158,113 +454,28 @@ status_info(#mailbox{unseen = UnSeen} = MailBoxInfo,[unseen|T],Acc) ->
 	status_info(MailBoxInfo,T,[{unseen, UnSeen}|Acc]);
 status_info(_MailBoxInfo,[],Acc) -> lists:reverse(Acc).
 
-	
+%%-------------------------------------------------------------------------
+%% @spec status_resp(list()) -> string()
+%% @doc Takes a list of status information and returns a response string
+%% @end
+%%-------------------------------------------------------------------------
+status_resp([]) -> "()";
+status_resp(List) -> status_resp(List,[]).
+%%-------------------------------------------------------------------------
+%% @spec status_resp(list(),list()) -> string()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+status_resp([{Type,Info}|T],Acc) ->
+	status_resp(T,[32,integer_to_list(Info),32,http_util:to_upper(atom_to_list(Type))|Acc]);
+status_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
 
 
-
-
-
-mailbox_info(MailBoxStore) -> mailbox_info(MailBoxStore,all).
-
-mailbox_info(MailBoxStore,Args) when is_record(MailBoxStore,mailbox_store) -> 
-	{MailBoxName,UserName,DomainName} = MailBoxStore#mailbox_store.name,
-	mailbox_info(#mailbox{name = MailBoxName},{UserName,DomainName},Args);
-mailbox_info(MailBox,{UserName,DomainName}) -> mailbox_info(MailBox,{UserName,DomainName},all).
-
-
-mailbox_info(MailBox,{UserName,DomainName},all) -> mailbox_info(MailBox,{UserName,DomainName},[exists,messages,unseen,recent,flags,permanentflags]);
-
-mailbox_info(MailBox,{UserName,DomainName},[exists|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
-	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
-		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
-		MailBoxStore -> mailbox_info(MailBox#mailbox{exists=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
-	end;
-mailbox_info(MailBox,{UserName,DomainName},[messages|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
-	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
-		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
-		MailBoxStore -> mailbox_info(MailBox#mailbox{messages=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
-	end;
-mailbox_info(MailBox,{UserName,DomainName},[unseen|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
-	case Store:unseen({MailBox#mailbox.name,UserName,DomainName}) of
-		{_Seen,Unseen} ->  mailbox_info(MailBox#mailbox{unseen=length(Unseen)},{UserName,DomainName},T);
-		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
-	end;
-mailbox_info(MailBox,{UserName,DomainName},[recent|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
-	case Store:recent({MailBox#mailbox.name,UserName,DomainName}) of
-		Recent when is_list(Recent) ->  mailbox_info(MailBox#mailbox{recent=length(Recent)},{UserName,DomainName},T);
-		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
-	end;
-mailbox_info(MailBox,{UserName,DomainName},[flags|T]) ->
-	mailbox_info(MailBox#mailbox{flags=[answered,flagged,draft,deleted,seen]},{UserName,DomainName},T);
-% TODO: UIDNEXT
-% TODO: UIDVALIDITY
-
-
-mailbox_info(MailBox,{UserName,DomainName},[_H|T]) ->
-	?D(_H),
-	mailbox_info(MailBox,{UserName,DomainName},T);
-
-mailbox_info(MailBox,{_UserName,_DomainName},[]) -> MailBox.
-
-
-
-
-
-
-
-
-
-
-
-greeting_capability(State) when is_record(State,imapd_fsm) -> greeting_capability(State#imapd_fsm.options);
-greeting_capability(Options) ->
-	case erlmail_conf:lookup_atom(server_imap_greeting_capability,Options) of
-		true -> true;
-		_ -> false
-	end.
-
-greeting(State) when is_record(State,imapd_fsm) -> greeting(State#imapd_fsm.options);
-greeting(Options) ->
-	case erlmail_conf:lookup(server_imap_greeting,Options) of
-		[] -> "ErlMail IMAP4 Server ready";
-		Greeting -> Greeting
-	end.
-
-
-
-
-inbox(MailBox) ->
-	case list_to_atom(http_util:to_lower(MailBox)) of
-		inbox -> "INBOX";
-		_ -> MailBox
-	end.
-
-heirachy_char() ->
-	case erlmail_conf:lookup(server_imap_hierarchy) of
-		[] -> "/";
-		Heirarchy -> Heirarchy
-	end.
-
-
-
-
-quote([]) -> [34,34];
-quote(String) -> quote(String,optional).
-
-quote(String,true)     -> [34] ++ String ++ [34];
-quote(String,optional) -> 
-	case string:chr(String,32) of
-		0 -> String;
-		_ -> [34] ++ String ++ [34]
-	end;
-quote(String,false)    -> String;
-quote(String,_UnKnown) -> String.
-
-
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> string()
+%% @doc Removes Double Quotes and white space from both sides of a string
+%% @end
+%%-------------------------------------------------------------------------
 unquote(String) -> 
 	S2 = string:strip(String,both,32),
 	string:strip(S2,both,34).
@@ -280,56 +491,6 @@ unquote(String) ->
 
 
 
-clean({UserName,Password}) ->
-	{clean(UserName),clean(Password)};
-clean(String) ->
-	S = string:strip(String,both,32),
-	S2 = string:strip(S,both,34),
-	string:strip(S2,both,32).
-
-
-seq_to_list([I|_] = Seq) when is_integer(I) -> seq_to_list(string:tokens(Seq,","));
-seq_to_list(Seq) -> seq_to_list(Seq,[]).
-
-seq_to_list([],Acc) -> lists:flatten(lists:reverse(Acc));
-seq_to_list([H|T],Acc) ->
-	case catch list_to_integer(H) of
-		Int when is_integer(Int) -> seq_to_list(T,[Int|Acc]);
-		_ ->
-			[S,E] = string:tokens(H,":"),
-			Start = list_to_integer(S),
-			End = list_to_integer(E),
-			seq_to_list(T,[lists:seq(Start,End)|Acc])
-	end.
-
-list_to_seq(List) -> list_to_seq(List,0,[]).
-list_to_seq([],_,Acc) -> lists:flatten(lists:reverse(Acc));
-
-
-list_to_seq([H],Start,Acc) when is_integer(H), Start > 0 ->
-	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
-	list_to_seq([],0,[String|Acc]);
-
-list_to_seq([H],_,Acc) when is_integer(H) ->
-	list_to_seq([],0,[integer_to_list(H)|Acc]);
-list_to_seq([H|[I|_] = T],Start,Acc) when H == I - 1, Start == 0 ->
-	list_to_seq(T,H,Acc);
-
-list_to_seq([H|[I] = _T],Start,Acc) when H == I - 1, is_integer(I) ->
-	?D({Start,H,I}),
-	String = integer_to_list(Start) ++ ":" ++ integer_to_list(I),
-	list_to_seq([],Start,[String|Acc]);
-
-list_to_seq([H|[I|_J] = T],Start,Acc) when H == I - 1 ->
-	list_to_seq(T,Start,Acc);
-
-list_to_seq([H|[I|_J] = T],Start,Acc) when H /= I - 1, Start > 0 ->
-	String = integer_to_list(Start) ++ ":" ++ integer_to_list(H),
-	list_to_seq(T,0,[44,String|Acc]);
-
-
-list_to_seq([H|[_I|_] = T],_Start,Acc) ->
-	list_to_seq(T,0,[44,integer_to_list(H)|Acc]).
 
 
 
@@ -338,16 +499,43 @@ list_to_seq([H|[_I|_] = T],_Start,Acc) ->
 
 
 
-send(Resp,State) when is_record(Resp,imap_resp)  -> send(response(Resp),State);
-send(Msg,State)  when is_record(State,imapd_fsm) -> send(Msg,State#imapd_fsm.socket);
-send(Message,Socket) ->
-%	?D(Message),
-	Msg = case string:right(Message,2) of
-		?CRLF -> [Message];
-		_      -> [Message,?CRLF]
-	end,
-%	?D(Msg),
-	gen_tcp:send(Socket,Msg).
 
-out(Command,State) -> io:format("~p ~p~n",[State#imapd_fsm.addr,Command]).
-out(Command,Param,State) -> io:format("~p ~p ~p~n",[State#imapd_fsm.addr,Command,Param]).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

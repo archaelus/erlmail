@@ -1,12 +1,12 @@
 %%%---------------------------------------------------------------------------------------
-%%% File        : mnesia_store
+%%% File        : mysql_store
 %%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
 %%% Purpose     : MNESIA email store
 %%% Created     : 2007-10-20
 %%% Initial Rel : 0.0.6
 %%% Updated     : 2007-10-18
 %%%---------------------------------------------------------------------------------------
--module(mnesia_store).
+-module(mysql_store).
 -author('sjackson@simpleenigma.com').
 -include("erlmail.hrl").
 -behavior(gen_store).
