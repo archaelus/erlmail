@@ -57,9 +57,46 @@ lookup(Key,State) when is_record(State,smtpd_fsm) -> lookup(Key,State#smtpd_fsm.
 lookup(Key,State) when is_record(State,imapd_fsm) -> lookup(Key,State#imapd_fsm.options);
 lookup(Key,List) ->
 	case lists:keysearch(Key,1,List) of
-		{value,{Key,Value}} -> Value;
-		false -> []
+		{value,{Key,Value}} -> cleanup(Key,Value);
+		false -> cleanup(Key,[])
 	end.
+
+
+
+% Cleanup config info and supply defaults for some settings if they don't exist
+cleanup(server_smtp_port,[])                      -> 25;
+cleanup(server_smtp_port,Port) when is_list(Port) -> list_to_integer(Port);
+cleanup(server_smtp_max_connection,[])                    -> 25;
+cleanup(server_smtp_max_connection,Max) when is_list(Max) -> list_to_integer(Max);
+cleanup(server_smtp_greeting,[]) -> "ErlMail http://erlsoft.org (NO UCE)";
+
+cleanup(server_imap_greeting,[]) -> "IMAP4 server ready";
+cleanup(server_imap_greeting_capability,Boolean) when Boolean /= "true"; Boolean /= "false" -> false;
+cleanup(server_imap_greeting_capability,Boolean)  -> list_to_atom(Boolean);
+cleanup(server_imap_port,[])                      -> 143;
+cleanup(server_imap_port,Port) when is_list(Port) -> list_to_integer(Port);
+cleanup(server_imap_hierarchy,[]) -> '/';
+cleanup(server_imap_hierarchy,Hierarchy) when is_list(Hierarchy) -> list_to_atom(Hierarchy);
+
+cleanup(store_type_domain,[])                               -> dets_store;
+cleanup(store_type_domain,Store) when is_list(Store)        -> list_to_atom(Store);
+cleanup(store_type_user,[])                                 -> dets_store;
+cleanup(store_type_user,Store) when is_list(Store)          -> list_to_atom(Store);
+cleanup(store_type_message,[])                              -> dets_store;
+cleanup(store_type_message,Store) when is_list(Store)       -> list_to_atom(Store);
+cleanup(store_type_mailbox_store,[])                        -> dets_store;
+cleanup(store_type_mailbox_store,Store) when is_list(Store) -> list_to_atom(Store);
+
+cleanup(dets_table_domain,[])        -> domain;
+cleanup(dets_table_user,[])          -> user;
+cleanup(dets_table_message,[])       -> message;
+cleanup(dets_table_mailbox_store,[]) -> mailbox_store;
+
+
+
+
+
+cleanup(_Key,Value) -> Value.
 
 
 lookup_atom(Key) -> lookup_atom(Key,read()).
