@@ -20,7 +20,7 @@
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([heirachy_char/0]).
 -export([seq_to_list/1,list_to_seq/1]).
--export([quote/1,quote/2]).
+-export([quote/1,quote/2,unquote/1]).
 
 
 parse(Line) ->
@@ -252,7 +252,7 @@ heirachy_char() ->
 
 
 
-
+quote([]) -> [34,34];
 quote(String) -> quote(String,optional).
 
 quote(String,true)     -> [34] ++ String ++ [34];
@@ -265,7 +265,9 @@ quote(String,false)    -> String;
 quote(String,_UnKnown) -> String.
 
 
-
+unquote(String) -> 
+	S2 = string:strip(String,both,32),
+	string:strip(S2,both,34).
 
 
 
