@@ -21,7 +21,7 @@
 -export([out/2,out/3,send/2]).
 -export([parse/1]).
 -export([quote/1,quote/2,unquote/1]).
--export([response/1]).
+-export([response/1,re_split/1]).
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([seq_to_list/1,list_to_seq/1]).
@@ -350,6 +350,50 @@ response(#imap_resp{info = Info} = Resp,Acc) when is_list(Info), Info /= [] ->
 response(Resp,Acc) -> 
 	?D({Resp,Acc}),
 	{error,unkown_response}.
+
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> {string(),string()}
+%% @doc Finds space to break string when double quotes strings are found
+%% @end
+%%-------------------------------------------------------------------------
+re_split(String) -> re_split(String,"^\".*\"",32,34).
+
+%%-------------------------------------------------------------------------
+%% @spec (String::string(),RegExp::string(),Space::integer(),Quote::integer()) -> {string(),string()}
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+re_split(String,RegExp,Space,Quote) ->
+	?D(String),
+	{One,Two} = case string:chr(String, Space) of
+		0 -> {String,[]};
+		Pos -> 
+			case string:chr(String, Quote) of
+				0 ->
+					case lists:split(Pos,String) of
+						{O,T} -> {O,T};
+						Other -> Other
+					end;
+				_ -> 
+					case regexp:match(String,RegExp) of
+						{match,Start,Length} when Start < Pos -> 
+							?D({Start,Length}),
+							lists:split(Start + Length,String);
+						nomatch -> 
+							case lists:split(Pos,String) of
+								{O,T} -> 
+									case regexp:match(T,RegExp) of
+										{match,_,_} -> {O,imapd_util:clean(T)};
+										nomatch -> {O,T}
+									end;
+								Other -> Other
+							end
+					end
+			end
+	end,
+	{imapd_util:clean(One),Two}.
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec (Message::string(),Socket::port()) -> ok | {error,string()}
