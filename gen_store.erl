@@ -14,9 +14,9 @@
 -export([behaviour_info/1]).
 
 behaviour_info(callbacks) -> [{create,1},{drop,1},{insert,1},{update,1},{delete,1},{select,2},
-								{info,1},{config,0},{list,0},{list,1},
+								{list,0},{list,1},
 								{message_name,1},{ensure_inbox,1},{deliver,1},{check,1},
-								{unseen,1},{recent,1}
+								{unseen,1},{recent,1},{mlist,3}
 								];
 behaviour_info(_Other) -> undefined.
 

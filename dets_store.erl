@@ -14,7 +14,7 @@
 -export([create/1,drop/1,select/2,insert/1,delete/1,delete/2,update/1,message_name/1]).
 -export([info/1,config/0,list/0,list/1]).
 -export([deliver/1,ensure_inbox/1,check/1]).
--export([unseen/1,recent/1]).
+-export([unseen/1,recent/1,mlist/3]).
 
 -export([select/1,info/2,filename/1]).
 
@@ -162,6 +162,7 @@ ensure_inbox(User) when is_record(User,user) -> undefined.
 unseen({_MailBoxName,_UserName,_DomainName}) -> undefined.
 recent({_MailBoxName,_UserName,_DomainName}) -> undefined.
 check(_Type) -> undefined.
+mlist(_MailBoxName,{_UserName,_DomainName},_Subscribed) -> undefined.
 
 
 
