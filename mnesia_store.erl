@@ -244,7 +244,7 @@ message_name(Args) -> gen_store:message_name(Args).
 
 mlist(MailBoxName,{UserName,DomainName},false) -> mlist(MailBoxName,{UserName,DomainName},'_');
 mlist(MailBoxName,{UserName,DomainName},Subscribed) -> 
-	?D({MailBoxName,UserName,DomainName,Subscribed}),
+%	?D({MailBoxName,UserName,DomainName,Subscribed}),
 	MatchHead = #mailbox_store{name = {'$1',UserName,DomainName}, subscribed = Subscribed, _ = '_'},
 	Guard = [],
 	Result = '$1',
@@ -254,7 +254,19 @@ mlist(MailBoxName,{UserName,DomainName},Subscribed) ->
 		mnesia:select(TableName,MatchSpec)
 		end,
 	case mnesia:sync_transaction(F) of
-		{atomic,List} -> lists:sort(List);
+		{atomic,List} -> 
+			{ok,Clean,_line} = regexp:gsub(MailBoxName,"%","?"),
+			 RegExp = regexp:sh_to_awk(Clean),
+%			?D(RegExp),
+%			?D(List),
+			Filter = lists:filter(fun(Folder) -> 
+				case regexp:match(Folder,RegExp) of
+					{match,_,_} -> true;
+					nomatch -> false
+				end
+				end,List),
+			?D(Filter),
+			lists:sort(Filter);
 		{aborted,Reason} -> {error,Reason}
 	end.
 

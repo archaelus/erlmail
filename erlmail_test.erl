@@ -76,13 +76,13 @@ c(IP) ->
 	cmd(Fsm,login,"simpleenigma@erlsoft.net","erlmail"),
 %	cmd(Fsm,select,"INBOX"),
 %	cmd(Fsm,examine,"INBOX"),
-%	cmd(Fsm,create,"test"),
+%	cmd(Fsm,create,"Clients"),
 %	cmd(Fsm,rename,"test","testing"),
 %	cmd(Fsm,subscribe,"test"),
 %	cmd(Fsm,unsubscribe,"test"),
 %	cmd(Fsm,delete,"test"),
 %	cmd(Fsm,status,"inbox",[messages,recent,uidnext,uidvalidity,unseen]), % 
-	cmd(Fsm,list,"","*"),
+	cmd(Fsm,list,"","Sent*"),
 
 %	cmd(Fsm,close),
 	cmd(Fsm,logout),

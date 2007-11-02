@@ -1,8 +1,8 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
-%%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
 %%% @doc        IMAP server utility functions
-%%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @version    0.0.6
 %%% @since      0.0.6
 %%% @end
@@ -383,7 +383,7 @@ re_split(String) -> re_split(String,"^\".*\"",32,34).
 %% @end
 %%-------------------------------------------------------------------------
 re_split(String,RegExp,Space,Quote) ->
-	?D(String),
+%	?D(String),
 	{One,Two} = case string:chr(String, Space) of
 		0 -> {String,[]};
 		Pos -> 
@@ -396,7 +396,7 @@ re_split(String,RegExp,Space,Quote) ->
 				_ -> 
 					case regexp:match(String,RegExp) of
 						{match,Start,Length} when Start + Length >= length(String) -> 
-							?D({Start,Length}),
+%							?D({Start,Length}),
 							lists:split(Pos,String);
 						{match,Start,Length} when Start < Pos -> 
 							?D({Start,Length}),
@@ -430,15 +430,8 @@ send(Message,Socket) ->
 		?CRLF -> [Message];
 		_      -> [Message,?CRLF]
 	end,
-	?D(Msg),
+%	?D(Msg),
 	gen_tcp:send(Socket,Msg).
-
-
-
-
-
-
-
 
 %%-------------------------------------------------------------------------
 %% @spec (Sequence::string()) -> list()
@@ -545,63 +538,3 @@ status_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++
 unquote(String) -> 
 	S2 = string:strip(String,both,32),
 	string:strip(S2,both,34).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
