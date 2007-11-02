@@ -1,11 +1,12 @@
-%%%----------------------------------------------------------------------
-%%% File        : imapd_cmd
-%%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
-%%% Purpose     : IMAP server command processing
-%%% Created     : 2007-10-21
-%%% Initial Rel : 0.0.6
-%%% Updated     : 2007-10-21
-%%%----------------------------------------------------------------------
+%%%---------------------------------------------------------------------------------------
+%%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
+%%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc        IMAP server command processing
+%%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @version    0.0.6
+%%% @since      0.0.6
+%%% @end
+%%%---------------------------------------------------------------------------------------
 -module(imapd_cmd).
 -author('sjackson@simpleenigma.com').
 -include("imap.hrl").
@@ -14,11 +15,22 @@
 -export([command/1,command/2]).
 
 
-
+%%-------------------------------------------------------------------------
+%% @spec (State::imapd_fsm()) -> NewState::imapd_fsm()
+%% @doc  Processes all IMAP commands and checks for extention processing
+%% @end
+%%-------------------------------------------------------------------------
 command(#imapd_fsm{line = Line} = State) -> 
-	io:format("Command Line: ~s~n",[State#imapd_fsm.line]),
-	command(imapd_util:parse(Line),State).
+	Command = imapd_util:parse(Line),
+	io:format("Command: ~p~n",[Command]),
+	command(Command,State).
 
+
+%%-------------------------------------------------------------------------
+%% @spec (Comamnd::imap_cmd(),State::imapd_fsm()) -> NewState::imapd_fsm()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
 %%%-------------------------
 %%% CAPABILITY - Any State
 %%%-------------------------
@@ -120,7 +132,8 @@ command(#imap_cmd{tag = Tag, cmd = select = Command},
 	imapd_util:out(Command, State),
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},#imapd_fsm{state = authenticated, user = User} = State) -> 
+command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command, MailBoxName, State),
 	Store = gen_store:lookup(mailbox_store, State),
 	MailBoxStore = Store:select({MailBoxName, User#user.name}),
@@ -155,7 +168,8 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command},
 	imapd_util:out(Command, State),
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},#imapd_fsm{state = authenticated, user = User} = State) -> 
+command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command, MailBoxName, State),
 	Store = gen_store:lookup(mailbox_store, State),
 	MailBoxStore = Store:select({MailBoxName, User#user.name}),
@@ -190,7 +204,7 @@ command(#imap_cmd{tag = Tag, cmd = create = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
-	    #imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,Data,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({Data,User#user.name}) of
@@ -220,7 +234,7 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
-	    #imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
@@ -257,7 +271,7 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "Failure: not authenticated"},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
-        #imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,{Src,Dst},State),
 	Store = gen_store:lookup(mailbox_store, State),
 	SrcMB = Store:select({string:strip(Src),User#user.name}),
@@ -293,7 +307,7 @@ command(#imap_cmd{tag = Tag, cmd = subscribe = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = subscribe = Command, data = MailBoxName},
-	    #imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
@@ -318,7 +332,7 @@ command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
-	    #imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
@@ -343,15 +357,15 @@ command(#imap_cmd{tag = Tag, cmd = list = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = list = Command, data = {Reference,MailBoxName}},
-		#imapd_fsm{state = authenticated, user = User} = State) ->
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	% @todo incorparete reference name. Simplier not to use at first
-	?D({Reference,MailBoxName}),
+%	?D({Reference,MailBoxName}),
 	Store = gen_store:lookup(mailbox_store, State),
 	Heirachy = imapd_util:heirachy_char(),
-	?D(Heirachy),
+%	?D(Heirachy),
 	case Store:mlist(MailBoxName,User#user.name,false) of
 		List when is_list(List) -> 
-			?D(List),
+%			?D(List),
 			lists:map(fun(Name) -> 
 				Info = {Command,Heirachy,Name},
 				Data = {Command,[]},
@@ -378,7 +392,7 @@ command(#imap_cmd{tag = Tag, cmd = lsub = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName}},
-		#imapd_fsm{state = authenticated, user = User} = State) ->
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	% @todo incorparete reference name. Simplier not to use at first
 	?D({Reference,MailBoxName}),
 	Store = gen_store:lookup(mailbox_store, State),
@@ -409,7 +423,7 @@ command(#imap_cmd{tag = Tag, cmd = status = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}},
-		#imapd_fsm{state = authenticated, user = User} = State) -> 
+		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({string:strip(MailBoxName),User#user.name}) of
