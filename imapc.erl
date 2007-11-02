@@ -179,7 +179,7 @@ unsubscribe(Pid,MailBox,Tag) -> gen_fsm:sync_send_event(Pid,{unsubscribe,Tag,Mai
 %%--------------------------------------------------------------------
 
 list(Pid,RefName,Mailbox) -> list(Pid,RefName,Mailbox,imapc_util:tag()).
-list(Pid,RefName,Mailbox,Tag) -> gen_fsm:sync_send_event(Pid,{list,Tag,RefName,Mailbox}).
+list(Pid,RefName,Mailbox,Tag) -> gen_fsm:sync_send_event(Pid,{list,Tag,imapd_util:quote(RefName,true),imapd_util:quote(Mailbox,true)}).
 
 %%--------------------------------------------------------------------
 %% Function: lsub(Pid,RefName,Mailbox)

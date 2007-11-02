@@ -125,7 +125,7 @@ command({Command,Param},State) ->
 
 
 check_user({UserName,DomainName},State) ->
-	Store = list_to_atom(erlmail_conf:lookup(store_type_user,State)),
+	Store = erlmail_conf:lookup(store_type_user,State),
 	case Store:select({UserName,DomainName}) of
 		[]   -> false;
 		_User -> true
@@ -134,12 +134,12 @@ check_user({UserName,DomainName},State) ->
 
 store_message(Message,State) when is_binary(Message) -> store_message(binary_to_list(Message),State);
 store_message(Message,State) when is_record(Message,message) ->
-	Store = list_to_atom(erlmail_conf:lookup(store_type_message,State)),
+	Store = erlmail_conf:lookup(store_type_message,State),
 %	?D({Store,Message}),
 %	Store:insert(Message);
 	Store:deliver(Message#message{flags=[recent]});
 store_message(Message,State) ->
-	Store = list_to_atom(erlmail_conf:lookup(store_type_message,State)),
+	Store = erlmail_conf:lookup(store_type_message,State),
 	lists:map(fun(To) -> 
 		MessageName = Store:message_name(now()),
 		store_message(MessageName,erlmail_util:split_email(To),Message,State)

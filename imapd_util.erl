@@ -1,4 +1,4 @@
-%%%----------------------------------------------------------------------
+%%%---------------------------------------------------------------------------------------
 %%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
 %%% @doc        IMAP server utility functions
@@ -6,7 +6,7 @@
 %%% @version    0.0.6
 %%% @since      0.0.6
 %%% @end
-%%%----------------------------------------------------------------------
+%%%---------------------------------------------------------------------------------------
 -module(imapd_util).
 -author('sjackson@simpleenigma.com').
 -include("imap.hrl").
@@ -243,6 +243,7 @@ parse(Line) ->
 	NextData = case list_to_atom(string:strip(http_util:to_lower(Command))) of
 		Cmd = login       -> clean(split_at(Data,32));
 		Cmd = select      -> clean(inbox(Data));
+		Cmd = create      -> clean(inbox(Data));
 		Cmd = delete      -> clean(inbox(Data));
 		Cmd = rename      -> split_at(Data);
 		Cmd = subscribe   -> clean(inbox(Data));
@@ -254,7 +255,13 @@ parse(Line) ->
 			{Seq,FlagData} = imapd_util:split_at(Data),
 			{Action,Flags} = imapd_util:split_at(FlagData),
 			{Seq,Action,Flags};
-		Cmd               -> Data
+		Cmd = list       -> 
+			{Ref,MailBox} = re_split(Data),
+			{Ref,clean(MailBox)};
+		Cmd = lsub       -> 
+			{Ref,MailBox} = re_split(Data),
+			{Ref,clean(MailBox)};
+		Cmd              -> Data
 	end,
 	#imap_cmd{
 		line = Line,
@@ -279,7 +286,7 @@ quote(String) -> quote(String,optional).
 %%      around it or not based on the given options. Default = false
 %% @end
 %%-------------------------------------------------------------------------
-
+quote(Atom,Boolean) when is_atom(Atom) -> quote(atom_to_list(Atom),Boolean);
 quote(String,true)     -> [34] ++ String ++ [34];
 quote(String,optional) -> 
 	case string:chr(String,32) of
@@ -341,10 +348,22 @@ response(#imap_resp{data = {flags,Flags}} = Resp,Acc) ->
 	response(Resp#imap_resp{data = []},[32,flags_resp(Flags)|Acc]);
 response(#imap_resp{data = {status,MailBoxName,Info}} = Resp,Acc) ->
 	response(Resp#imap_resp{data = []},[32,status_resp(Info),32,MailBoxName|Acc]);
+response(#imap_resp{data = {list,Flags}} = Resp,Acc) ->
+	Data = flags_resp(Flags),
+	response(Resp#imap_resp{data = []},[32,Data|Acc]);
+response(#imap_resp{data = {lsub,Flags}} = Resp,Acc) ->
+	Data = flags_resp(Flags),
+	response(Resp#imap_resp{data = []},[32,Data|Acc]);
 
 response(#imap_resp{data = Data} = Resp,Acc) when is_list(Data), Data /= [] ->
 	response(Resp#imap_resp{data = []},[32,41,[],40|Acc]);
 %% INFO
+response(#imap_resp{info = {list,Heirachy,Name}} = Resp,Acc) -> 
+	Info = [quote(Heirachy,true),32,quote(Name,true)],
+	response(Resp#imap_resp{info = []},[32,Info|Acc]);
+response(#imap_resp{info = {lsub,Heirachy,Name}} = Resp,Acc) -> 
+	Info = [quote(Heirachy,true),32,quote(Name,true)],
+	response(Resp#imap_resp{info = []},[32,Info|Acc]);
 response(#imap_resp{info = Info} = Resp,Acc) when is_list(Info), Info /= [] -> 
 	response(Resp#imap_resp{info = []},[32,Info|Acc]);
 response(Resp,Acc) -> 
@@ -376,6 +395,9 @@ re_split(String,RegExp,Space,Quote) ->
 					end;
 				_ -> 
 					case regexp:match(String,RegExp) of
+						{match,Start,Length} when Start + Length >= length(String) -> 
+							?D({Start,Length}),
+							lists:split(Pos,String);
 						{match,Start,Length} when Start < Pos -> 
 							?D({Start,Length}),
 							lists:split(Start + Length,String);
@@ -408,7 +430,7 @@ send(Message,Socket) ->
 		?CRLF -> [Message];
 		_      -> [Message,?CRLF]
 	end,
-%	?D(Msg),
+	?D(Msg),
 	gen_tcp:send(Socket,Msg).
 
 

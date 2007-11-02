@@ -333,14 +333,68 @@ command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
 %%%-------------------------
 %%% LIST - Authenticated
 %%%-------------------------
+command(#imap_cmd{tag = Tag, cmd = list = Command, data = []}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error"},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = list = Command},
+		#imapd_fsm{state = not_authenticated} = State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = list = Command, data = {Reference,MailBoxName}},
+		#imapd_fsm{state = authenticated, user = User} = State) ->
+	% @todo incorparete reference name. Simplier not to use at first
+	?D({Reference,MailBoxName}),
+	Store = gen_store:lookup(mailbox_store, State),
+	Heirachy = imapd_util:heirachy_char(),
+	?D(Heirachy),
+	case Store:mlist(MailBoxName,User#user.name,false) of
+		List when is_list(List) -> 
+			?D(List),
+			lists:map(fun(Name) -> 
+				Info = {Command,Heirachy,Name},
+				Data = {Command,[]},
+				imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Data, info = Info},State)
+				end,List),
+			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
+		undefined -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		_ -> imapd_util:send(#imap_resp{tag = Tag, status = bad},State)
+	end,
+	State;
 
-% @todo LIST impliment command
 
 %%%-------------------------
 %%% LSUB - Authenticated
 %%%-------------------------
 
-% @todo LSUB impliment command
+command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = []}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error"},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = lsub = Command},
+		#imapd_fsm{state = not_authenticated} = State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName}},
+		#imapd_fsm{state = authenticated, user = User} = State) ->
+	% @todo incorparete reference name. Simplier not to use at first
+	?D({Reference,MailBoxName}),
+	Store = gen_store:lookup(mailbox_store, State),
+	Heirachy = imapd_util:heirachy_char(),
+	case Store:mlist(MailBoxName,User#user.name,true) of
+		List when is_list(List) -> 
+			lists:map(fun(Name) -> 
+				Info = {Command,Heirachy,Name},
+				Data = {Command,[]},
+				imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Data, info = Info},State)
+				end,List),
+			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
+		undefined -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		_ -> imapd_util:send(#imap_resp{tag = Tag, status = bad},State)
+	end,
+	State;
 
 %%%-------------------------
 %%% STATUS - Authenticated

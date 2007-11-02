@@ -13,15 +13,18 @@
 -include("imap.hrl").
 -compile(export_all).
 
-
+-define(RE_SPLIT,"^\".*\"").
 
 
 e() ->
 	erlmail_conf:lookup(server_imap_extentions).
 
+re_split(1) -> re_split("test test test");
+re_split(2) -> re_split("\"test test\" test");
+re_split(3) -> re_split("test \"test test\"");
+re_split(4) -> re_split("\"\" \"*\"");
 
-
-
+re_split(String) -> imapd_util:re_split(String).
 
 
 
@@ -78,7 +81,8 @@ c(IP) ->
 %	cmd(Fsm,subscribe,"test"),
 %	cmd(Fsm,unsubscribe,"test"),
 %	cmd(Fsm,delete,"test"),
-	cmd(Fsm,status,"inbox",[messages,recent,uidnext,uidvalidity,unseen]), % 
+%	cmd(Fsm,status,"inbox",[messages,recent,uidnext,uidvalidity,unseen]), % 
+	cmd(Fsm,list,"","*"),
 
 %	cmd(Fsm,close),
 	cmd(Fsm,logout),
