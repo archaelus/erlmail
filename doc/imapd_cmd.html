@@ -7,22 +7,23 @@
 <body bgcolor="white">
 
 <h1>Module imapd_cmd</h1>
+       IMAP server command processing.
+<p>Copyright ©  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.</p>
+<ul><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+<p><b>Version:</b>    0.0.6</p>
+<p><b>Introduced in:</b>      0.0.6</p>
+<p><b>Authors:</b> Stuart Jackson (<a href="mailto:sjackson@simpleenigma.com"><tt>sjackson@simpleenigma.com</tt></a>) [<em>web site:</em> <tt><a href="http://erlsoft.org" target="_top">http://erlsoft.org</a></tt>].</p>
+<p><b>References</b><ul><li> See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information</li></ul></p>
 
-<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
-
+<h2><a name="description">Description</a></h2>       IMAP server command processing
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1"><tr><td valign="top"><a href="#command-1">command/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#command-2">command/2</a></td><td/></tr>
+<table width="100%" border="1"><tr><td valign="top"><a href="#command-1">command/1</a></td><td> Processes all IMAP commands and checks for extention processing.</td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
 
 <h3><a name="command-1">command/1</a></h3>
-<tt>command(Imapd_fsm) -&gt; term()
-</tt>
-
-<h3><a name="command-2">command/2</a></h3>
-<tt>command(Imap_cmd, State) -&gt; term()
-</tt>
+<p><tt>command(State::<a href="#type-imapd_fsm">imapd_fsm()</a>) -&gt; NewState::<a href="#type-imapd_fsm">imapd_fsm()</a></tt></p>
+<p> Processes all IMAP commands and checks for extention processing</p>
 </body>
 </html>
