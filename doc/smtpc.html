@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module smtpc</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+
+<h1>Module smtpc</h1>
+
+<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1"><tr><td valign="top"><a href="#connect-1">connect/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#connect-2">connect/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#data-2">data/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#ehlo-2">ehlo/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#etrn-2">etrn/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#expn-2">expn/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#helo-2">helo/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#help-1">help/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#mail-2">mail/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#noop-1">noop/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#quit-1">quit/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#rcpt-2">rcpt/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#rset-1">rset/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#sendmail-5">sendmail/5</a></td><td/></tr>
+<tr><td valign="top"><a href="#sendmail-6">sendmail/6</a></td><td/></tr>
+<tr><td valign="top"><a href="#vrfy-2">vrfy/2</a></td><td/></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3><a name="connect-1">connect/1</a></h3>
+<tt>connect(IPAddress) -&gt; term()
+</tt>
+
+<h3><a name="connect-2">connect/2</a></h3>
+<tt>connect(IPAddress, Port) -&gt; term()
+</tt>
+
+<h3><a name="data-2">data/2</a></h3>
+<tt>data(Pid, Message) -&gt; term()
+</tt>
+
+<h3><a name="ehlo-2">ehlo/2</a></h3>
+<tt>ehlo(Pid, HostName) -&gt; term()
+</tt>
+
+<h3><a name="etrn-2">etrn/2</a></h3>
+<tt>etrn(Pid, Queue) -&gt; term()
+</tt>
+
+<h3><a name="expn-2">expn/2</a></h3>
+<tt>expn(Pid, Alias) -&gt; term()
+</tt>
+
+<h3><a name="helo-2">helo/2</a></h3>
+<tt>helo(Pid, HostName) -&gt; term()
+</tt>
+
+<h3><a name="help-1">help/1</a></h3>
+<tt>help(Pid) -&gt; term()
+</tt>
+
+<h3><a name="mail-2">mail/2</a></h3>
+<tt>mail(Pid, From) -&gt; term()
+</tt>
+
+<h3><a name="noop-1">noop/1</a></h3>
+<tt>noop(Pid) -&gt; term()
+</tt>
+
+<h3><a name="quit-1">quit/1</a></h3>
+<tt>quit(Pid) -&gt; term()
+</tt>
+
+<h3><a name="rcpt-2">rcpt/2</a></h3>
+<tt>rcpt(Pid, To) -&gt; term()
+</tt>
+
+<h3><a name="rset-1">rset/1</a></h3>
+<tt>rset(Pid) -&gt; term()
+</tt>
+
+<h3><a name="sendmail-5">sendmail/5</a></h3>
+<tt>sendmail(IPAddress, Host, From, To, Message) -&gt; term()
+</tt>
+
+<h3><a name="sendmail-6">sendmail/6</a></h3>
+<tt>sendmail(IPAddress, Port, Host, From, To, Message) -&gt; term()
+</tt>
+
+<h3><a name="vrfy-2">vrfy/2</a></h3>
+<tt>vrfy(Pid, Address) -&gt; term()
+</tt>
+</body>
+</html>

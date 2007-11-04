@@ -1,0 +1,182 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module imapd_util</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+
+<h1>Module imapd_util</h1>
+       IMAP server utility functions.
+<p>Copyright © 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.</p>
+<ul><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+<p><b>Version:</b>    0.0.6</p>
+<p><b>Introduced in:</b>      0.0.6</p>
+<p><b>Authors:</b> Stuart Jackson (<a href="mailto:sjackson@simpleenigma.com"><tt>sjackson@simpleenigma.com</tt></a>) [<em>web site:</em> <tt><a href="http://erlsoft.org" target="_top">http://erlsoft.org</a></tt>].</p>
+<p><b>References</b><ul><li>See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information</li></ul></p>
+
+<h2><a name="description">Description</a></h2>       IMAP server utility functions
+<h2><a name="types">Data Types</a></h2>
+
+<h3><a name="type-cmd_data">cmd_data()</a></h3>
+<p><tt>cmd_data() = term()</tt></p>
+
+
+<h3><a name="type-command">command()</a></h3>
+<p><tt>command() = atom()</tt></p>
+
+
+<h3><a name="type-imap_cmd">imap_cmd()</a></h3>
+<p><tt>imap_cmd() = {imap_cmd, <a href="#type-line">line()</a>, <a href="#type-tag">tag()</a>, <a href="#type-comamnd">comamnd()</a>, <a href="#type-cmd_data">cmd_data()</a>}</tt></p>
+
+
+<h3><a name="type-imap_resp">imap_resp()</a></h3>
+<p><tt>imap_resp() = {imap_resp, record}</tt></p>
+
+
+<h3><a name="type-line">line()</a></h3>
+<p><tt>line() = string()</tt></p>
+
+
+<h3><a name="type-quoteoptions">quoteoptions()</a></h3>
+<p><tt>quoteoptions() = true | false | optional</tt></p>
+
+
+<h3><a name="type-tag">tag()</a></h3>
+<p><tt>tag() = atom()</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1"><tr><td valign="top"><a href="#clean-1">clean/1</a></td><td>Removes whitespace and Doule Quotes from a string.</td></tr>
+<tr><td valign="top"><a href="#flags_resp-1">flags_resp/1</a></td><td>Takes a list of flags and returns a response string.</td></tr>
+<tr><td valign="top"><a href="#greeting-1">greeting/1</a></td><td>Returns IMAP greeting string from config file or uses Default.</td></tr>
+<tr><td valign="top"><a href="#greeting_capability-1">greeting_capability/1</a></td><td>Check if capability data should be returned in greeting.</td></tr>
+<tr><td valign="top"><a href="#heirachy_char-0">heirachy_char/0</a></td><td>Gets Heirarchy chara from config file.</td></tr>
+<tr><td valign="top"><a href="#inbox-1">inbox/1</a></td><td>Make sure that the string INBOX is always capitalized at the
+       begining of the mailbox name.</td></tr>
+<tr><td valign="top"><a href="#list_to_seq-1">list_to_seq/1</a></td><td>Converts a list of integers into an IMAP sequence.</td></tr>
+<tr><td valign="top"><a href="#mailbox_info-1">mailbox_info/1</a></td><td>Takes a #mailbox_store{} record and returns all information in a
+       #mailbox{} record.</td></tr>
+<tr><td valign="top"><a href="#mailbox_info-2">mailbox_info/2</a></td><td>Takes a #mailbox_store{} record and returns information from Flags
+       in a #mailbox{} record.</td></tr>
+<tr><td valign="top"><a href="#parse-1">parse/1</a></td><td>Takes a command line from the connected IMAP client and parses the
+       it into an imap_cmd{} record.</td></tr>
+<tr><td valign="top"><a href="#quote-1">quote/1</a></td><td>Determines if the given string needs to have Double Quotes
+       around it or not.</td></tr>
+<tr><td valign="top"><a href="#quote-2">quote/2</a></td><td>Determines if the given string needs to have Double Quotes
+       around it or not based on the given options.</td></tr>
+<tr><td valign="top"><a href="#re_split-1">re_split/1</a></td><td>Finds space to break string when double quotes strings are found.</td></tr>
+<tr><td valign="top"><a href="#response-1">response/1</a></td><td>Take an #imap_resp{} record and returns a response string.</td></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td>Sends a Message to Socket adds CRLF if needed.</td></tr>
+<tr><td valign="top"><a href="#seq_to_list-1">seq_to_list/1</a></td><td>Converts an IMAP sequence string into a lsit of intgers.</td></tr>
+<tr><td valign="top"><a href="#split_at-1">split_at/1</a></td><td>Splits the given string into two strings at the first SPACE (chr(32)).</td></tr>
+<tr><td valign="top"><a href="#split_at-2">split_at/2</a></td><td>Splits the given string into two strings at the first instace of Chr.</td></tr>
+<tr><td valign="top"><a href="#status_flags-1">status_flags/1</a></td><td>Takes a string os status requests and returns a list of
+       status requests.</td></tr>
+<tr><td valign="top"><a href="#status_info-2">status_info/2</a></td><td>Takes a list of status flags or a status string and returns
+       information for each requested flag.</td></tr>
+<tr><td valign="top"><a href="#status_resp-1">status_resp/1</a></td><td>Takes a list of status information and returns a response string.</td></tr>
+<tr><td valign="top"><a href="#unquote-1">unquote/1</a></td><td>Removes Double Quotes and white space from both sides of a string.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3><a name="clean-1">clean/1</a></h3>
+<p><tt>clean(String::string()) -&gt; string()</tt></p>
+<p>Removes whitespace and Doule Quotes from a string.</p>
+
+<h3><a name="flags_resp-1">flags_resp/1</a></h3>
+<p><tt>flags_resp(List::list()) -&gt; string()</tt></p>
+<p>Takes a list of flags and returns a response string.</p>
+
+<h3><a name="greeting-1">greeting/1</a></h3>
+<p><tt>greeting(Options::list()) -&gt; string()</tt></p>
+<p>Returns IMAP greeting string from config file or uses Default.</p>
+
+<h3><a name="greeting_capability-1">greeting_capability/1</a></h3>
+<p><tt>greeting_capability(Options::list()) -&gt; string()</tt></p>
+<p>Check if capability data should be returned in greeting.
+       Default: false</p>
+
+<h3><a name="heirachy_char-0">heirachy_char/0</a></h3>
+<p><tt>heirachy_char() -&gt; string()</tt></p>
+<p>Gets Heirarchy chara from config file.
+       Default: "/"</p>
+
+<h3><a name="inbox-1">inbox/1</a></h3>
+<p><tt>inbox(MailBoxName::string()) -&gt; string()</tt></p>
+<p>Make sure that the string INBOX is always capitalized at the
+       begining of the mailbox name</p>
+
+<h3><a name="list_to_seq-1">list_to_seq/1</a></h3>
+<p><tt>list_to_seq(List::list()) -&gt; string()</tt></p>
+<p>Converts a list of integers into an IMAP sequence</p>
+
+<h3><a name="mailbox_info-1">mailbox_info/1</a></h3>
+<p><tt>mailbox_info(MailBoxStore::tuple()) -&gt; tuple()</tt></p>
+<p>Takes a #mailbox_store{} record and returns all information in a
+       #mailbox{} record</p>
+
+<h3><a name="mailbox_info-2">mailbox_info/2</a></h3>
+<p><tt>mailbox_info(MailBoxStore::tuple(), Flags::list()) -&gt; tuple()</tt></p>
+<p>Takes a #mailbox_store{} record and returns information from Flags
+       in a #mailbox{} record</p>
+
+<h3><a name="parse-1">parse/1</a></h3>
+<p><tt>parse(Line::string()) -&gt; <a href="#type-imap_cmd">imap_cmd()</a></tt></p>
+<p>Takes a command line from the connected IMAP client and parses the
+       it into an imap_cmd{} record</p>
+
+<h3><a name="quote-1">quote/1</a></h3>
+<p><tt>quote(String::string()) -&gt; string()</tt></p>
+<p>Determines if the given string needs to have Double Quotes
+       around it or not</p>
+
+<h3><a name="quote-2">quote/2</a></h3>
+<p><tt>quote(String::string(), Options::<a href="#type-quoteoptions">quoteoptions()</a>) -&gt; string()</tt></p>
+<p>Determines if the given string needs to have Double Quotes
+       around it or not based on the given options. Default = false</p>
+
+<h3><a name="re_split-1">re_split/1</a></h3>
+<p><tt>re_split(String::string()) -&gt; {string(), string()}</tt></p>
+<p>Finds space to break string when double quotes strings are found</p>
+
+<h3><a name="response-1">response/1</a></h3>
+<p><tt>response(Resp::<a href="#type-imap_resp">imap_resp()</a>) -&gt; string()</tt></p>
+<p>Take an #imap_resp{} record and returns a response string</p>
+
+<h3><a name="send-2">send/2</a></h3>
+<p><tt>send(Message::string(), Socket::port()) -&gt; ok | {error, string()}</tt></p>
+<p>Sends a Message to Socket adds CRLF if needed.</p>
+
+<h3><a name="seq_to_list-1">seq_to_list/1</a></h3>
+<p><tt>seq_to_list(Sequence::string()) -&gt; list()</tt></p>
+<p>Converts an IMAP sequence string into a lsit of intgers</p>
+
+<h3><a name="split_at-1">split_at/1</a></h3>
+<p><tt>split_at(String::string()) -&gt; {string(), string()}</tt></p>
+<p>Splits the given string into two strings at the first SPACE (chr(32))</p>
+
+<h3><a name="split_at-2">split_at/2</a></h3>
+<p><tt>split_at(String::string(), Chr::char()) -&gt; {string(), string()}</tt></p>
+<p>Splits the given string into two strings at the first instace of Chr</p>
+
+<h3><a name="status_flags-1">status_flags/1</a></h3>
+<p><tt>status_flags(String::string()) -&gt; list()</tt></p>
+<p>Takes a string os status requests and returns a list of
+       status requests</p>
+
+<h3><a name="status_info-2">status_info/2</a></h3>
+<p><tt>status_info(MailBoxInfo::tuple(), List::list()) -&gt; list()</tt></p>
+<p>Takes a list of status flags or a status string and returns
+       information for each requested flag</p>
+
+<h3><a name="status_resp-1">status_resp/1</a></h3>
+<p><tt>status_resp(List::list()) -&gt; string()</tt></p>
+<p>Takes a list of status information and returns a response string</p>
+
+<h3><a name="unquote-1">unquote/1</a></h3>
+<p><tt>unquote(String::string()) -&gt; string()</tt></p>
+<p>Removes Double Quotes and white space from both sides of a string</p>
+</body>
+</html>

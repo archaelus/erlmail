@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module imapd_ext</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+
+<h1>Module imapd_ext</h1>
+
+<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1"><tr><td valign="top"><a href="#capability-0">capability/0</a></td><td>Check and verify extentions and return capability string.</td></tr>
+<tr><td valign="top"><a href="#check-1">check/1</a></td><td>Check to see if extention is in the config file.</td></tr>
+<tr><td valign="top"><a href="#list-0">list/0</a></td><td>List all verified extentions from config file.</td></tr>
+<tr><td valign="top"><a href="#list-1">list/1</a></td><td>List all verified extentions from ExtentionList.</td></tr>
+<tr><td valign="top"><a href="#verify-2">verify/2</a></td><td>Verify that Module:Function/2 exists in Erlang path.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3><a name="capability-0">capability/0</a></h3>
+<p><tt>capability() -&gt; string()</tt></p>
+<p>Check and verify extentions and return capability string</p>
+
+<h3><a name="check-1">check/1</a></h3>
+<p><tt>check(Key::atom()) -&gt; {ok, tuple()} | {error, atom()}</tt></p>
+<p>Check to see if extention is in the config file</p>
+
+<h3><a name="list-0">list/0</a></h3>
+<p><tt>list() -&gt; list()</tt></p>
+<p>List all verified extentions from config file</p>
+
+<h3><a name="list-1">list/1</a></h3>
+<p><tt>list(ExtentionList::list()) -&gt; list()</tt></p>
+<p>List all verified extentions from ExtentionList</p>
+
+<h3><a name="verify-2">verify/2</a></h3>
+<p><tt>verify(Module::atom(), Funcation::atom()) -&gt; bool()</tt></p>
+<p>Verify that Module:Function/2 exists in Erlang path</p>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module imapc</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+
+<h1>Module imapc</h1>
+
+<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1"><tr><td valign="top"><a href="#append-3">append/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#append-4">append/4</a></td><td/></tr>
+<tr><td valign="top"><a href="#authenticate-2">authenticate/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#build-0">build/0</a></td><td/></tr>
+<tr><td valign="top"><a href="#build-1">build/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#capability-1">capability/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#check-1">check/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#close-1">close/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#connect-1">connect/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#connect-2">connect/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#copy-3">copy/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#create-2">create/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#delete-2">delete/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#deletef-2">deletef/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#draft-2">draft/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#examine-1">examine/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#examine-2">examine/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#expunge-1">expunge/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#flag-2">flag/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#info-1">info/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#info-2">info/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#list-3">list/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#login-3">login/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#logout-1">logout/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#lsub-3">lsub/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#move-3">move/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#noop-1">noop/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#rename-3">rename/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#search-2">search/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#seen-2">seen/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#select-1">select/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#select-2">select/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#sort-3">sort/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#sort-4">sort/4</a></td><td/></tr>
+<tr><td valign="top"><a href="#status-2">status/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#status-3">status/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#store-4">store/4</a></td><td/></tr>
+<tr><td valign="top"><a href="#subscribe-2">subscribe/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#switch-2">switch/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#uid-3">uid/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#undeletef-2">undeletef/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#undraft-2">undraft/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#unflag-2">unflag/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#unseen-2">unseen/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#unsubscribe-2">unsubscribe/2</a></td><td/></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3><a name="append-3">append/3</a></h3>
+<tt>append(Pid, Mailbox, Message) -&gt; term()
+</tt>
+
+<h3><a name="append-4">append/4</a></h3>
+<tt>append(Pid, Mailbox, Message, Rest) -&gt; term()
+</tt>
+
+<h3><a name="authenticate-2">authenticate/2</a></h3>
+<tt>authenticate(Pid, Method) -&gt; term()
+</tt>
+
+<h3><a name="build-0">build/0</a></h3>
+<tt>build() -&gt; term()
+</tt>
+
+<h3><a name="build-1">build/1</a></h3>
+<tt>build(X1) -&gt; term()
+</tt>
+
+<h3><a name="capability-1">capability/1</a></h3>
+<tt>capability(Pid) -&gt; term()
+</tt>
+
+<h3><a name="check-1">check/1</a></h3>
+<tt>check(Pid) -&gt; term()
+</tt>
+
+<h3><a name="close-1">close/1</a></h3>
+<tt>close(Pid) -&gt; term()
+</tt>
+
+<h3><a name="connect-1">connect/1</a></h3>
+<tt>connect(IPAddress) -&gt; term()
+</tt>
+
+<h3><a name="connect-2">connect/2</a></h3>
+<tt>connect(IPAddress, Port) -&gt; term()
+</tt>
+
+<h3><a name="copy-3">copy/3</a></h3>
+<tt>copy(Pid, Set, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="create-2">create/2</a></h3>
+<tt>create(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="delete-2">delete/2</a></h3>
+<tt>delete(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="deletef-2">deletef/2</a></h3>
+<tt>deletef(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="draft-2">draft/2</a></h3>
+<tt>draft(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="examine-1">examine/1</a></h3>
+<tt>examine(Pid) -&gt; term()
+</tt>
+
+<h3><a name="examine-2">examine/2</a></h3>
+<tt>examine(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="expunge-1">expunge/1</a></h3>
+<tt>expunge(Pid) -&gt; term()
+</tt>
+
+<h3><a name="fetch-3">fetch/3</a></h3>
+<tt>fetch(Pid, Set, Query) -&gt; term()
+</tt>
+
+<h3><a name="flag-2">flag/2</a></h3>
+<tt>flag(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="info-1">info/1</a></h3>
+<tt>info(Pid) -&gt; term()
+</tt>
+
+<h3><a name="info-2">info/2</a></h3>
+<tt>info(Pid, Type) -&gt; term()
+</tt>
+
+<h3><a name="list-3">list/3</a></h3>
+<tt>list(Pid, RefName, Mailbox) -&gt; term()
+</tt>
+
+<h3><a name="login-3">login/3</a></h3>
+<tt>login(Pid, UserName, Password) -&gt; term()
+</tt>
+
+<h3><a name="logout-1">logout/1</a></h3>
+<tt>logout(Pid) -&gt; term()
+</tt>
+
+<h3><a name="lsub-3">lsub/3</a></h3>
+<tt>lsub(Pid, RefName, Mailbox) -&gt; term()
+</tt>
+
+<h3><a name="move-3">move/3</a></h3>
+<tt>move(Pid, Set, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="noop-1">noop/1</a></h3>
+<tt>noop(Pid) -&gt; term()
+</tt>
+
+<h3><a name="rename-3">rename/3</a></h3>
+<tt>rename(Pid, OrgMailBox, NewMailBox) -&gt; term()
+</tt>
+
+<h3><a name="search-2">search/2</a></h3>
+<tt>search(Pid, Query) -&gt; term()
+</tt>
+
+<h3><a name="seen-2">seen/2</a></h3>
+<tt>seen(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="select-1">select/1</a></h3>
+<tt>select(Pid) -&gt; term()
+</tt>
+
+<h3><a name="select-2">select/2</a></h3>
+<tt>select(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="sort-3">sort/3</a></h3>
+<tt>sort(Pid, Order, Query) -&gt; term()
+</tt>
+
+<h3><a name="sort-4">sort/4</a></h3>
+<tt>sort(Pid, Order, Query, Charset) -&gt; term()
+</tt>
+
+<h3><a name="status-2">status/2</a></h3>
+<tt>status(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="status-3">status/3</a></h3>
+<tt>status(Pid, MailBox, StatusCodes) -&gt; term()
+</tt>
+
+<h3><a name="store-4">store/4</a></h3>
+<tt>store(Pid, Set, ItemName, Flags) -&gt; term()
+</tt>
+
+<h3><a name="subscribe-2">subscribe/2</a></h3>
+<tt>subscribe(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="switch-2">switch/2</a></h3>
+<tt>switch(Pid, MailBox) -&gt; term()
+</tt>
+
+<h3><a name="uid-3">uid/3</a></h3>
+<tt>uid(Pid, X2, Query) -&gt; term()
+</tt>
+
+<h3><a name="undeletef-2">undeletef/2</a></h3>
+<tt>undeletef(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="undraft-2">undraft/2</a></h3>
+<tt>undraft(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="unflag-2">unflag/2</a></h3>
+<tt>unflag(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="unseen-2">unseen/2</a></h3>
+<tt>unseen(Pid, Set) -&gt; term()
+</tt>
+
+<h3><a name="unsubscribe-2">unsubscribe/2</a></h3>
+<tt>unsubscribe(Pid, MailBox) -&gt; term()
+</tt>
+</body>
+</html>
