@@ -13,7 +13,7 @@
 -include("../include/imap.hrl").
 -compile(export_all).
 
--define(RE_SPLIT,"^\".*\"").
+-define(RE_SPLIT,"^(\"[^\"]*\")").
 
 
 e() ->
@@ -23,8 +23,10 @@ re_split(1) -> re_split("test test test");
 re_split(2) -> re_split("\"test test\" test");
 re_split(3) -> re_split("test \"test test\"");
 re_split(4) -> re_split("\"\" \"*\"");
+re_split(5) -> re_split("\"test test\" \"test test\"");
+re_split(6) -> re_split("\"Sent Items/testing\" \"Sent Items/testing folders\"");
 
-re_split(String) -> imapd_util:re_split(String).
+re_split(String) -> imapd_util:re_split(String,?RE_SPLIT,32,34).
 
 
 

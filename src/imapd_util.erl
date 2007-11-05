@@ -21,7 +21,7 @@
 -export([out/2,out/3,send/2]).
 -export([parse/1]).
 -export([quote/1,quote/2,unquote/1]).
--export([response/1,re_split/1]).
+-export([response/1,re_split/1,re_split/4]).
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([seq_to_list/1,list_to_seq/1]).
@@ -245,7 +245,9 @@ parse(Line) ->
 		Cmd = select      -> clean(inbox(Data));
 		Cmd = create      -> clean(inbox(Data));
 		Cmd = delete      -> clean(inbox(Data));
-		Cmd = rename      -> split_at(Data);
+		Cmd = rename      -> 
+			{Src,Dst} = re_split(Data),
+			{clean(Src),clean(Dst)};
 		Cmd = subscribe   -> clean(inbox(Data));
 		Cmd = unsubscribe -> clean(inbox(Data));
 		Cmd = status      -> 
@@ -375,7 +377,7 @@ response(Resp,Acc) ->
 %% @doc Finds space to break string when double quotes strings are found
 %% @end
 %%-------------------------------------------------------------------------
-re_split(String) -> re_split(String,"^\".*\"",32,34).
+re_split(String) -> re_split(String,"^(\"[^\"]*\")",32,34).
 
 %%-------------------------------------------------------------------------
 %% @spec (String::string(),RegExp::string(),Space::integer(),Quote::integer()) -> {string(),string()}
@@ -383,7 +385,7 @@ re_split(String) -> re_split(String,"^\".*\"",32,34).
 %% @end
 %%-------------------------------------------------------------------------
 re_split(String,RegExp,Space,Quote) ->
-%	?D(String),
+	?D(String),
 	{One,Two} = case string:chr(String, Space) of
 		0 -> {String,[]};
 		Pos -> 
@@ -396,11 +398,16 @@ re_split(String,RegExp,Space,Quote) ->
 				_ -> 
 					case regexp:match(String,RegExp) of
 						{match,Start,Length} when Start + Length >= length(String) -> 
-%							?D({Start,Length}),
+							?D({Start,Length}),
 							lists:split(Pos,String);
 						{match,Start,Length} when Start < Pos -> 
 							?D({Start,Length}),
-							lists:split(Start + Length,String);
+							case lists:prefix([34,34],String) of
+								true -> 
+									{_O,T} = lists:split(3,String),
+									{[],T};
+								false -> lists:split(Start + Length,String)
+							end;
 						nomatch -> 
 							case lists:split(Pos,String) of
 								{O,T} -> 
