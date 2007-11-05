@@ -1,6 +1,7 @@
 {application,erlmail}.
 {packages,[]}.
 {modules,[dets_store,
+          erlmail,
           erlmail_conf,
           erlmail_test,
           erlmail_util,
