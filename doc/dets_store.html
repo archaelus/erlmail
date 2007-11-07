@@ -7,14 +7,25 @@
 <body bgcolor="white">
 
 <h1>Module dets_store</h1>
+       DETS email store.
+<p>Copyright © 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.</p>
+<ul><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+<p><b>Version:</b>    0.0.6</p>
+<p><b>Introduced in:</b>      0.0.5</p>
+<p><b>Authors:</b> Stuart Jackson (<a href="mailto:sjackson@simpleenigma.com"><tt>sjackson@simpleenigma.com</tt></a>) [<em>web site:</em> <tt><a href="http://erlsoft.org" target="_top">http://erlsoft.org</a></tt>].</p>
+<p><b>References</b><ul><li>See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information</li><li>See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information</li></ul></p>
 
-<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+<h2><a name="description">Description</a></h2>       DETS email store
+<h2><a name="types">Data Types</a></h2>
+
+<h3><a name="type-store_type">store_type()</a></h3>
+<p><tt>store_type() = domain | user | message | mailbox_store</tt></p>
+
 
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1"><tr><td valign="top"><a href="#check-1">check/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#config-0">config/0</a></td><td/></tr>
-<tr><td valign="top"><a href="#create-1">create/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#delete-1">delete/1</a></td><td/></tr>
+<table width="100%" border="1"><tr><td valign="top"><a href="#check-1">check/1</a></td><td>Performs check command on store of Type.</td></tr>
+<tr><td valign="top"><a href="#create-1">create/1</a></td><td>Creates store for Type.</td></tr>
+<tr><td valign="top"><a href="#delete-1">delete/1</a></td><td>Deletes entry in store of Type.</td></tr>
 <tr><td valign="top"><a href="#delete-2">delete/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#deliver-1">deliver/1</a></td><td/></tr>
 <tr><td valign="top"><a href="#drop-1">drop/1</a></td><td/></tr>
@@ -37,20 +48,17 @@
 <h2><a name="functions">Function Details</a></h2>
 
 <h3><a name="check-1">check/1</a></h3>
-<tt>check(Type) -&gt; term()
-</tt>
-
-<h3><a name="config-0">config/0</a></h3>
-<tt>config() -&gt; term()
-</tt>
+<p><tt>check(Type::<a href="#type-store_type">store_type()</a>) -&gt; ok | undefined | {error, string()}</tt></p>
+<p>Performs check command on store of Type. Commits and cleans up any
+       actions that are not writen to disk on a regualar basis</p>
 
 <h3><a name="create-1">create/1</a></h3>
-<tt>create(Type) -&gt; term()
-</tt>
+<p><tt>create(Type::<a href="#type-store_type">store_type()</a>) -&gt; ok | undefined | {error, string()}</tt></p>
+<p>Creates store for Type.</p>
 
 <h3><a name="delete-1">delete/1</a></h3>
-<tt>delete(X1) -&gt; term()
-</tt>
+<p><tt>delete(Type::<a href="#type-store_type">store_type()</a>) -&gt; ok | undefined | {error, string()}</tt></p>
+<p>Deletes entry in store of Type.</p>
 
 <h3><a name="delete-2">delete/2</a></h3>
 <tt>delete(Type, Key) -&gt; term()
