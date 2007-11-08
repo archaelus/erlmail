@@ -55,7 +55,11 @@ fetch_items(_List,_Acc) -> ok.
 %%      The data Items are return as a list of lower case atoms, or tuples
 %% @end
 %%-------------------------------------------------------------------------
-fetch_tokens(String) -> fetch_tokens(list_to_binary(string:to_lower(String)),[]).
+fetch_tokens(String) -> 
+	S1 = http_util:to_lower(String),
+	S2 = string:strip(S1,both,40),
+	S3 = string:strip(S2,both,41),
+	fetch_tokens(list_to_binary(S3),[]).
 %%-------------------------------------------------------------------------
 %% @spec (String::string(),Acc::list()) -> list()
 %% @hidden
@@ -70,19 +74,32 @@ fetch_tokens(<<"fast",Rest/binary>>,Acc) ->
 	fetch_tokens(Rest,[flags,internaldate,'rfc822.size'|Acc]);
 fetch_tokens(<<"full",Rest/binary>>,Acc) ->
 	fetch_tokens(Rest,[flags,internaldate,'rfc822.size',envelope,body|Acc]);
-%% @todo BODY and BODY.PEEK create partial parsing
 fetch_tokens(<<"body.peek[",Rest/binary>>,Acc) ->
 	String = binary_to_list(Rest),
 	Pos = string:chr(String,93),
-	{Sec,Next} = lists:split(Pos,String),
+	{Sec,New} = lists:split(Pos,String),
+	{Next,Start,Count} = case regexp:match(New,"^<([0-9]+\.[0-9]+)>") of
+		{match,1,Length} -> 
+			{Size,New2} = lists:split(Length,New),
+			[S,C] = string:tokens(Size,[46,60,62]),
+			{New2,list_to_integer(S),list_to_integer(C)};
+		nomatch -> {New,0,0}
+	end,
 	Sections = fetch_body_sections(Sec),
-	fetch_tokens(list_to_binary(Next),[{body.peek,Sections}|Acc]);
+	fetch_tokens(list_to_binary(Next),[{body.peek,{Start,Count},Sections}|Acc]);
 fetch_tokens(<<"body[",Rest/binary>>,Acc) ->
 	String = binary_to_list(Rest),
 	Pos = string:chr(String,93),
-	{Sec,Next} = lists:split(Pos,String),
+	{Sec,New} = lists:split(Pos,String),
+	{Next,Start,Count} = case regexp:match(New,"^<([0-9]+\.[0-9]+)>") of
+		{match,1,Length} -> 
+			{Size,New2} = lists:split(Length,New),
+			[S,C] = string:tokens(Size,[46,60,62]),
+			{New2,list_to_integer(S),list_to_integer(C)};
+		nomatch -> {New,0,0}
+	end,
 	Sections = fetch_body_sections(Sec),
-	fetch_tokens(list_to_binary(Next),[{body,Sections}|Acc]);
+	fetch_tokens(list_to_binary(Next),[{body,{Start,Count},Sections}|Acc]);
 
 fetch_tokens(<<"body",Rest/binary>>,Acc) ->
 	fetch_tokens(Rest,[body|Acc]);
@@ -117,7 +134,7 @@ fetch_tokens(Bin,_Acc) ->
 %% @end
 %%-------------------------------------------------------------------------
 fetch_body_sections(String) -> 
-	Bin = list_to_binary(string:strip(string:to_lower(String),right,93)),
+	Bin = list_to_binary(string:strip(http_util:to_lower(String),right,93)),
 	fetch_body_sections(Bin,[],[]).
 %%-------------------------------------------------------------------------
 %% @spec (Bin::binary(),Part::list(),Acc::list()) -> list()
@@ -130,18 +147,18 @@ fetch_body_sections(<<32,Rest/binary>>,Part,Acc) ->
 	fetch_body_sections(Rest,Part,Acc);
 fetch_body_sections(<<"header.fields.not",Rest/binary>>,Part,Acc) ->
 	String = binary_to_list(Rest),
-	Pos = string:chr(String,93),
+	Pos = string:chr(String,41),
 	{F,Next} = lists:split(Pos,String),
 	Fields = lists:map(fun(S) ->
-		list_to_atom(string:to_lower(S))
+		list_to_atom(http_util:to_lower(S))
 		end,string:tokens(F,[32,40,41])),
 	fetch_body_sections(list_to_binary(Next),[],[{'header.fields.not',Part,Fields}|Acc]);
 fetch_body_sections(<<"header.fields",Rest/binary>>,Part,Acc) ->
 	String = binary_to_list(Rest),
-	Pos = string:chr(String,93),
+	Pos = string:chr(String,41),
 	{F,Next} = lists:split(Pos,String),
 	Fields = lists:map(fun(S) ->
-		list_to_atom(string:to_lower(S))
+		list_to_atom(http_util:to_lower(S))
 		end,string:tokens(F,[32,40,41])),
 	fetch_body_sections(list_to_binary(Next),[],[{'header.fields',Part,Fields}|Acc]);
 fetch_body_sections(<<"header",Rest/binary>>,Part,Acc) ->
@@ -157,7 +174,6 @@ fetch_body_sections(Bin,_Part,Acc) ->
 	case regexp:match(String,RegExp) of
 		{match,1,Length} -> 
 			{P,Next} = lists:split(Length,String),
-			?D({P,Next}),
 			Part = lists:map(fun(S) ->
 				list_to_integer(S)
 				end,string:tokens(P,[46])),
@@ -386,7 +402,7 @@ parse(Line) ->
 		Cmd = subscribe   -> clean(inbox(Data));
 		Cmd = unsubscribe -> clean(inbox(Data));
 		Cmd = status      -> 
-			{MailBox,Flags} = split_at(Data),
+			{MailBox,Flags} = re_split(Data),
 			{clean(inbox(MailBox)),Flags};
 		Cmd = store      -> 
 			{Seq,FlagData} = imapd_util:split_at(Data),
@@ -398,14 +414,16 @@ parse(Line) ->
 		Cmd = lsub       -> 
 			{Ref,MailBox} = re_split(Data),
 			{Ref,clean(MailBox)};
-		Cmd = fetch      -> clean(split_at(Data));
+		Cmd = fetch      -> 
+			{Seq,NameString} = clean(split_at(Data)),
+			{Seq,fetch_tokens(NameString)};
 		Cmd = uid        -> 
 			{TypeString,Args} = clean(split_at(Data)),
 			Type = list_to_atom(http_util:to_lower(TypeString)),
 			case Type of
 				fetch -> 
 					{Seq,MessageData} = clean(split_at(Args)),
-					{fetch,Seq,MessageData};
+					{fetch,Seq,fetch_tokens(MessageData)};
 				copy  -> {copy,Args};
 				store -> {store,Args}
 			end;

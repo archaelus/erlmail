@@ -520,7 +520,9 @@ command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -> 
 	imapd_util:out(Command,State),
+	
 	?D({Seq,Data}),
+	
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"},State),
 	State;
 
