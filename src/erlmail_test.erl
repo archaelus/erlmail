@@ -16,6 +16,30 @@
 -define(RE_SPLIT,"^(\"[^\"]*\")").
 
 
+
+f(1) -> f("ENVELOPE RFC822.SIZE UID FLAGS INTERNALDATE");
+f(2) -> f("ALL FAST FULL");
+f(3) -> f("RFC822 RFC822.SIZE RFC822.TEXT RFC822.HEADER");
+f(4) -> f("BODY.PEEK[HEADER.FIELDS (References X-Ref X-Priority X-MSMail-Priority X-MSOESRec Newsgroups)] ENVELOPE RFC822.SIZE UID FLAGS INTERNALDATE");
+f(5) -> f("BODY.PEEK[4.2.HEADER 1.1.HEADER]");
+
+
+f(String) -> imapd_util:fetch_tokens(String).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 e() ->
 	erlmail_conf:lookup(server_imap_extentions).
 

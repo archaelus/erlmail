@@ -97,6 +97,7 @@ command(#imap_cmd{tag = Tag, cmd = login = Command, data = []},  State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = login = Command, data = {UserName,Password}}, 
 	    #imapd_fsm{state = not_authenticated, options = Options} = State) -> 
+	?D({UserName,Password}),
 	case lists:keysearch(logindisabled, 1, Options) of
 		{value, {logindisabled,true}} ->
 			imapd_util:send(#imap_resp{tag = Tag, status = no, info = "failure: command disabled"},State),
@@ -105,6 +106,7 @@ command(#imap_cmd{tag = Tag, cmd = login = Command, data = {UserName,Password}},
 			imapd_util:out(Command,UserName,State),
 			Store = gen_store:lookup(user,State),
 			User = Store:select(erlmail_util:split_email(UserName)),
+			?D(User),
 			case User of
 				#user{password = Password} = User when Password /= [] -> 
 					imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
@@ -507,6 +509,20 @@ command(#imap_cmd{tag = Tag, cmd = close = Command}, State) ->
 %%%-------------------------
 %%% FETCH - Authenticated
 %%%-------------------------
+command(#imap_cmd{tag = Tag, cmd = fetch = Command},
+		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = []}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -> 
+	imapd_util:out(Command,State),
+	?D({Seq,Data}),
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"},State),
+	State;
 
 % @todo FETCH impliment command
 
@@ -539,9 +555,19 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 %%%-------------------------
 %%% UID - Authenticated
 %%%-------------------------
-
-% @todo UID impliment command
-
+command(#imap_cmd{tag = Tag, cmd = uid = Command},
+		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected, user = _User} = State) -> 
+	imapd_util:out(Command,{fetch,Seq,Data},State),
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	State;
 
 
 
