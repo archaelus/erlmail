@@ -15,6 +15,7 @@
           imapd_app,
           imapd_cmd,
           imapd_ext,
+          imapd_fetch,
           imapd_fsm,
           imapd_listener,
           imapd_util,

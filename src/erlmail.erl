@@ -32,7 +32,7 @@ reload() ->
 	reload:reload([
 		erlmail_conf,erlmail_util,
 		gen_store,dets_store,mnesia_store,
-		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,
+		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
 		mime,
 		smtpd_app,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
