@@ -8,6 +8,9 @@
 -ifndef(CRLF).
 -define(CRLF,[13,10]).
 -endif.
+-ifndef(CRLF_BIN).
+-define(CRLF_BIN, <<13,10>>).
+-endif.
 
 -record(imapd_fsm,{
 	socket    = [],

@@ -34,6 +34,7 @@ reload() ->
 		gen_store,dets_store,mnesia_store,
 		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
+		mime,
 		smtpd_app,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
 		smtpc,smtpc_fsm,smtpc_util,
 		erlmail_test
