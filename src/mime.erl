@@ -39,7 +39,7 @@
 
 -export([encode/1,decode/1]).
 
--export([split/1,headers/1]).
+-export([split/1,headers/1,split_multipart/2]).
 
 
 
@@ -57,9 +57,25 @@ encode(_Message) -> ok.
 %% @end
 %%-------------------------------------------------------------------------
 decode(Message) -> 
-	M1 = split(Message),
-	Headers = headers(M1#mime.header_text),
-	M1#mime{header = Headers}.
+	MIME = split(Message),
+	Headers = headers(MIME#mime.header_text),
+	case lists:keysearch('content-type',1,Headers) of
+		{value,{'content-type',Value}} ->
+			case lists:prefix("multipart",http_util:to_lower(Value)) of
+				true -> 
+					Pos = string:chr(Value,61),
+					{_,B} = lists:split(Pos,Value),
+					Boundary = string:strip(B,both,34),
+					Parts = split_multipart(Boundary,MIME#mime.body_text),
+					MIMEParts = lists:map(fun(P) ->
+							decode(P)
+						end, Parts),
+					MIME#mime{header = Headers, body = MIMEParts};
+				false -> MIME#mime{header = Headers, body = MIME#mime.body_text}
+			end;
+		_ -> MIME#mime{header = Headers, body = MIME#mime.body_text}
+	end.
+
 
 
 
@@ -69,8 +85,8 @@ decode(Message) ->
 %% @end
 %%-------------------------------------------------------------------------
 headers(HeaderText) ->
-	{ok,H,_Lines} = regexp:gsub(HeaderText,";\n",";"),
-	Tokens = string:tokens(H,[10]),
+	{ok,H,_Lines} = regexp:gsub(HeaderText,"\r\n[\t ]"," "),
+	Tokens = string:tokens(H,[13,10]),
 	headers(Tokens,[]).
 %%-------------------------------------------------------------------------
 %% @spec (list(),Acc::list()) -> list()
@@ -88,16 +104,52 @@ headers([],Acc) -> lists:reverse(Acc).
 
 %%-------------------------------------------------------------------------
 %% @spec (Part::string()) -> mime() | {error,Reason::atom()}
-%% @doc Splits the part at the lcoation of two LF (\n) in a row and 
-%%      returns a #mime{} record. Performs some cleanup as well. 
+%% @doc Splits the part at the lcoation of two CRLF (\r\n) in a row and 
+%%      returns a #mime{} record. Performs some cleanup as well. Also checks 
+%%      for two LF (\n) and splits on that as some bad messages for formed 
+%%      this way.
 %% @end
 %%-------------------------------------------------------------------------
 split(Part) ->
-	Pos = string:str(Part,"\n\n"),
-	{Header,Body} = lists:split(Pos+1,Part),
-	#mime{header_text=string:strip(Header,right,10), body_text = Body}.
+	case string:str(Part,?CRLF ++ ?CRLF) of
+		0 ->
+			case string:str(Part,"\n\n") of
+				0 -> {error,no_break_found};
+				Pos ->
+					{Header,Body} = lists:split(Pos+1,Part),
+					#mime{header_text=string:strip(Header,right,10), body_text = Body}
+			end;
+		Pos -> 
+			{Header,Body} = lists:split(Pos+1,Part),
+			#mime{header_text=string:strip(Header,right,10), body_text = Body}
+	end.
 
 
+%%-------------------------------------------------------------------------
+%% @spec (Boundary::string(),Body::start()) -> Parts::list()
+%% @doc Take the Body of a mutlipart MIME messages and split it into it's 
+%%      parts on the boundary marks
+%% @end
+%%-------------------------------------------------------------------------
+split_multipart(Boundary,Body) -> split_multipart(Boundary,Body,[]).
+%%-------------------------------------------------------------------------
+%% @spec (Boundary::string(),Body::start(),Acc::list()) -> Parts::list()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+split_multipart(_Boundary,[],Acc) -> lists:reverse(Acc);
+split_multipart(Boundary,Body,Acc) -> 
+	case regexp:match(Body,Boundary) of
+		{match,Start,Length} ->
+			{_Pre,New} = lists:split(Start + Length + 1,Body),
+			case regexp:match(New,Boundary) of
+				{match,Start2,_Length2} ->
+					{Part,Next} = lists:split(Start2 - 3,New),
+					 split_multipart(Boundary,Next,[Part|Acc]);
+				nomatch -> split_multipart(Boundary,[],Acc)
+			end;
+		nomatch -> split_multipart(Boundary,[],Acc)
+	end.
 
 
 
