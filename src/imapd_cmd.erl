@@ -566,9 +566,24 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 	imapd_util:out(Command,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected, user = _User} = State) -> 
-	imapd_util:out(Command,{fetch,Seq,Data},State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected} = State) -> 
+	Items = case lists:member(uid,Data) of
+		true -> Data;
+		flase -> lists:usort([uid|Data])
+	end,
+	imapd_util:out(Command,{fetch,Seq,Items},State),
+	Selected = State#imapd_fsm.mailbox,
+	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	Messages = case Seq of
+		all -> MailBox#mailbox_store.messages;
+		Seq when is_list(Seq) -> [] % Check list membership for UID match in Seq
+	end,
+	imapd_fetch:fetch(Messages,Items,State),
+	
+	
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State#imapd_fsm{mailbox=MailBox}),
 	State;
 
 

@@ -23,12 +23,17 @@
 
 
 
-m() -> m(1).
+m() -> m(35).
 
 m(Id) ->
 	Message = mail(Id),
 	mime:decode(Message).
 
+e() -> e(35).
+e(Id) ->
+	MIME = m(Id),
+%	?D(MIME),
+	imapd_fetch:envelope(MIME).
 
 
 
@@ -66,9 +71,6 @@ f(String) ->
 	io:format("Test: ~s~n",[String]),
 	imapd_util:fetch_tokens(String).
 
-
-e() ->
-	erlmail_conf:lookup(server_imap_extentions).
 
 re_split(1) -> re_split("test test test");
 re_split(2) -> re_split("\"test test\" test");

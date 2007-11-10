@@ -119,7 +119,7 @@ deliver(Message) when is_record(Message,message) ->
 	ensure_inbox({UserName,DomainName}),
 	F = fun() ->
 		[MailBox] = mnesia:read({MailBoxTableName,{"INBOX",UserName,DomainName}}),
-		NewMailBox = MailBox#mailbox_store{messages = [MessageName|MailBox#mailbox_store.messages]},
+		NewMailBox = MailBox#mailbox_store{messages = lists:usort([MessageName|MailBox#mailbox_store.messages])},
 		UID = MailBox#mailbox_store.uidnext,
 		mnesia:write(MailBoxTableName,NewMailBox#mailbox_store{uidnext = UID + 1},write),
 		mnesia:write(MessageTableName,Message#message{uid = UID},write)	
@@ -253,6 +253,7 @@ list({UserName,DomainName}) ->
 		{atomic,List} -> List;
 		{aborted,Reason} -> {error,Reason}
 	end.
+
 
 %%-------------------------------------------------------------------------
 %% @spec (Args::any()) -> string() | undefined | {error,string()}

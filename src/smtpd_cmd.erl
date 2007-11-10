@@ -137,7 +137,7 @@ store_message(Message,State) when is_record(Message,message) ->
 	Store = erlmail_conf:lookup(store_type_message,State),
 %	?D({Store,Message}),
 %	Store:insert(Message);
-	Store:deliver(Message#message{flags=[recent]});
+	Store:deliver(Message#message{flags=[recent],options=[{internaldate,{date(),time()}}]});
 store_message(Message,State) ->
 	Store = erlmail_conf:lookup(store_type_message,State),
 	lists:map(fun(To) -> 

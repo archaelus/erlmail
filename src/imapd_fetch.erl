@@ -35,18 +35,155 @@
 %%%---------------------------------------------------------------------------------------
 -module(imapd_fetch).
 -author('sjackson@simpleenigma.com').
--include("../include/imap.hrl").
 -include("../include/erlmail.hrl").
+-include("../include/imap.hrl").
+-include("../include/mime.hrl").
 
 
-
+-export([fetch/3]).
 -export([items/1,items/2,tokens/1,tokens/2]).
 
+-export([envelope/1]).
+
+%%-------------------------------------------------------------------------
+%% @spec (MessageList::list(),Items::list(),State::imapd_fsm()) -> list()
+%% @doc Takes a list of MessageName and retrieves Items for each message
+%% @end
+%%-------------------------------------------------------------------------
+fetch(List,Items,State) -> 
+	lists:map(fun(MessageName) -> 
+		do_fetch(MessageName,Items,State)
+		end,List).
 
 
 
 
 
+
+
+do_fetch(MessageName,Items,#imapd_fsm{user = User} = State) -> 
+	Store = erlmail_conf:lookup_atom(store_type_message,State),
+	{UserName,DomainName} = User#user.name,
+	Message = Store:select({MessageName,UserName,DomainName}),
+	MIME = mime:decode(Message#message.message),
+	P = process(Items,Message,MIME),
+	?D(P),
+	P.
+
+
+process(Items,Message,MIME) -> process(Items,Message,MIME, <<>>).
+
+process([],_Message,_MIME,Bin) -> 
+	lists:flatten([40,string:strip(binary_to_list(Bin)),41]);
+
+process(['envelope'|T],Message,MIME,Bin) ->
+	Envelope = ["ENVELOPE",32,32],
+	EnvelopeBin = list_to_binary(Envelope),
+	process(T,Message,MIME,<<Bin/binary,EnvelopeBin/binary>>);
+
+process(['flags'|T],Message,MIME,Bin) ->
+	Flags = ["FLAGS",32,imapd_util:flags_resp(Message#message.flags),32],
+	FlagsBin = list_to_binary(Flags),
+	process(T,Message,MIME,<<Bin/binary,FlagsBin/binary>>);
+
+process(['internaldate'|T],Message,MIME,Bin) ->
+	InternalDate = ["INTERNALDATE",32,internaldate(Message),32],
+	InternalDateBin = list_to_binary(InternalDate),
+	process(T,Message,MIME,<<Bin/binary,InternalDateBin/binary>>);
+
+process(['rfc822.size'|T],Message,MIME,Bin) ->
+	Size = ["RFC822.SIZE",32,integer_to_list(length(Message#message.message)),32],
+	SizeBin = list_to_binary(Size),
+	process(T,Message,MIME,<<Bin/binary,SizeBin/binary>>);
+
+process([uid|T],Message,MIME,Bin) ->
+	UID = ["UID",32,integer_to_list(Message#message.uid),32],
+	UIDBin = list_to_binary(UID),
+	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
+	
+	
+
+process([H|T],Message,MIME,Bin) ->
+	?D({"Cannot Process: ",H}),
+	process(T,Message,MIME,Bin).
+
+
+
+
+envelope(MIME) -> envelope(MIME,[date,subject,from,sender,reply_to,to,cc,bcc,in_reply_to,message_id], <<>>).
+
+envelope(_MIME,[],Bin) ->
+	lists:flatten([40,string:strip(binary_to_list(Bin)),41]);
+
+envelope(MIME, [H|T], Bin) when H =:= date; H =:= subject; H =:= in_reply_to; H =:= message_id ->
+	String = case lists:keysearch(H,1,MIME#mime.header) of
+		{value,{H,Value}} -> imapd_util:quote(Value,true);
+		_ -> "NIL"
+	end,
+	NewBin = list_to_binary([String,32]),
+	envelope(MIME,T,<<Bin/binary,NewBin/binary>>);
+envelope(MIME, [H|T], Bin) when H =:= from; H =:= to; H =:= cc; H =:= bcc ->
+	String = case lists:keysearch(H,1,MIME#mime.header) of
+		{value,{H,Value}} -> imapd_util:quote(Value,true);
+		_ -> "NIL"
+	end,
+	Address = string_to_address(String),
+	?D(Address),
+	NewBin = list_to_binary([String,32]),
+	envelope(MIME,T,<<Bin/binary,NewBin/binary>>);
+
+
+
+envelope(MIME, [H|T], Bin) ->
+	?D(H),
+	envelope(MIME,T,Bin).
+
+
+string_to_address(String) -> String.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%% @todo: impliment real timezone code
+internaldate(Message) when is_record(Message,message) -> 
+	case lists:keysearch(internaldate,1,Message#message.options) of
+		{value,{internaldate,DateTime}} -> internaldate(DateTime);
+		_ -> 
+			?D(no_internaldate),
+			mnesia_store:update(Message#message{options=[{internaldate,{date(),time()}}]}),
+			internaldate({date(),time()})
+	end;
+internaldate({{Year,Month,Day},{Hour,Minute,Second}}) ->
+	[34,integer_to_list(Day),45,month(Month),45,integer_to_list(Year),32,padded_integer_to_list(Hour),58,padded_integer_to_list(Minute),58,padded_integer_to_list(Second)," -0800",34].
+
+month(1)  -> "Jan";
+month(2)  -> "Feb";
+month(3)  -> "Mar";
+month(4)  -> "Apr";
+month(5)  -> "May";
+month(6)  -> "Jun";
+month(7)  -> "Jul";
+month(8)  -> "Aug";
+month(9)  -> "Sep";
+month(10) -> "Oct";
+month(11) -> "Nov";
+month(12) -> "Dec".
+
+padded_integer_to_list(Integer) when Integer < 10 -> ["0",integer_to_list(Integer)];
+padded_integer_to_list(Integer)                   -> integer_to_list(Integer).
 
 
 

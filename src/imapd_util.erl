@@ -39,16 +39,6 @@ clean(String) ->
 	S2 = string:strip(S,both,34),
 	string:strip(S2,both,32).
 
-
-
-
-
-
-
-
-
-
-
 %%-------------------------------------------------------------------------
 %% @spec flags_resp(list()) -> string()
 %% @doc Takes a list of flags and returns a response string.
@@ -275,14 +265,14 @@ parse(Line) ->
 			{Ref,clean(MailBox)};
 		Cmd = fetch      -> 
 			{Seq,NameString} = clean(split_at(Data)),
-			{Seq,imapd_fetch:tokens(NameString)};
+			{seq_to_list(Seq),imapd_fetch:tokens(NameString)};
 		Cmd = uid        -> 
 			{TypeString,Args} = clean(split_at(Data)),
 			Type = list_to_atom(http_util:to_lower(TypeString)),
 			case Type of
 				fetch -> 
 					{Seq,MessageData} = clean(split_at(Args)),
-					{fetch,Seq,imapd_fetch:tokens(MessageData)};
+					{fetch,seq_to_list(Seq),imapd_fetch:tokens(MessageData)};
 				copy  -> {copy,Args};
 				store -> {store,Args}
 			end;
@@ -468,6 +458,7 @@ send(Message,Socket) ->
 %% @doc Converts an IMAP sequence string into a lsit of intgers
 %% @end
 %%-------------------------------------------------------------------------
+seq_to_list("1:*") -> all;
 seq_to_list([I|_] = Seq) when is_integer(I) -> seq_to_list(string:tokens(Seq,","));
 seq_to_list(Seq) -> seq_to_list(Seq,[]).
 %%-------------------------------------------------------------------------
@@ -475,7 +466,7 @@ seq_to_list(Seq) -> seq_to_list(Seq,[]).
 %% @hidden
 %% @end
 %%-------------------------------------------------------------------------
-seq_to_list([],Acc) -> lists:flatten(lists:reverse(Acc));
+seq_to_list([],Acc) -> lists:usort(lists:flatten(lists:reverse(Acc)));
 seq_to_list([H|T],Acc) ->
 	case catch list_to_integer(H) of
 		Int when is_integer(Int) -> seq_to_list(T,[Int|Acc]);
