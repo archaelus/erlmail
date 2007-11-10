@@ -26,8 +26,10 @@
 <table width="100%" border="1"><tr><td valign="top"><a href="#decode-1">decode/1</a></td><td>Recursively decodes a string into a #mime{} record.</td></tr>
 <tr><td valign="top"><a href="#encode-1">encode/1</a></td><td>Encodes a #mime{} record into a string.</td></tr>
 <tr><td valign="top"><a href="#headers-1">headers/1</a></td><td>Parses HeaderText into a Key/Value list.</td></tr>
-<tr><td valign="top"><a href="#split-1">split/1</a></td><td>Splits the part at the lcoation of two LF (\n) in a row and
+<tr><td valign="top"><a href="#split-1">split/1</a></td><td>Splits the part at the lcoation of two CRLF (\r\n) in a row and
        returns a #mime{} record.</td></tr>
+<tr><td valign="top"><a href="#split_multipart-2">split_multipart/2</a></td><td>Take the Body of a mutlipart MIME messages and split it into it's
+       parts on the boundary marks.</td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
@@ -46,7 +48,14 @@
 
 <h3><a name="split-1">split/1</a></h3>
 <p><tt>split(Part::string()) -&gt; <a href="#type-mime">mime()</a> | {error, Reason::atom()}</tt></p>
-<p>Splits the part at the lcoation of two LF (\n) in a row and
-       returns a #mime{} record. Performs some cleanup as well.</p>
+<p>Splits the part at the lcoation of two CRLF (\r\n) in a row and
+       returns a #mime{} record. Performs some cleanup as well. Also checks
+       for two LF (\n) and splits on that as some bad messages for formed
+       this way.</p>
+
+<h3><a name="split_multipart-2">split_multipart/2</a></h3>
+<p><tt>split_multipart(Boundary::string(), Body::<a href="#type-start">start()</a>) -&gt; Parts::list()</tt></p>
+<p>Take the Body of a mutlipart MIME messages and split it into it's
+       parts on the boundary marks</p>
 </body>
 </html>
