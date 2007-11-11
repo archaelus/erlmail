@@ -44,6 +44,7 @@
 -export([items/1,items/2,tokens/1,tokens/2]).
 
 -export([envelope/1]).
+-export([value_or_nil/1,value_or_nil/2]).
 
 %%-------------------------------------------------------------------------
 %% @spec (MessageList::list(),Items::list(),State::imapd_fsm()) -> list()
@@ -77,7 +78,7 @@ process([],_Message,_MIME,Bin) ->
 	lists:flatten([40,string:strip(binary_to_list(Bin)),41]);
 
 process(['envelope'|T],Message,MIME,Bin) ->
-	Envelope = ["ENVELOPE",32,32],
+	Envelope = ["ENVELOPE",32,envelope(MIME),32],
 	EnvelopeBin = list_to_binary(Envelope),
 	process(T,Message,MIME,<<Bin/binary,EnvelopeBin/binary>>);
 
@@ -100,7 +101,11 @@ process([uid|T],Message,MIME,Bin) ->
 	UID = ["UID",32,integer_to_list(Message#message.uid),32],
 	UIDBin = list_to_binary(UID),
 	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
-	
+
+process([{'body.peek',Pos,Items}|T],Message,MIME,Bin) ->
+	BodyPeek = ["BODY.PEEK",32,32],
+	BodyPeekBin = list_to_binary(BodyPeek),
+	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
 	
 
 process([H|T],Message,MIME,Bin) ->
@@ -124,11 +129,20 @@ envelope(MIME, [H|T], Bin) when H =:= date; H =:= subject; H =:= in_reply_to; H 
 	envelope(MIME,T,<<Bin/binary,NewBin/binary>>);
 envelope(MIME, [H|T], Bin) when H =:= from; H =:= to; H =:= cc; H =:= bcc ->
 	String = case lists:keysearch(H,1,MIME#mime.header) of
-		{value,{H,Value}} -> imapd_util:quote(Value,true);
+		{value,{H,Value}} -> string_to_address(Value);
 		_ -> "NIL"
 	end,
-	Address = string_to_address(String),
-	?D(Address),
+	NewBin = list_to_binary([String,32]),
+	envelope(MIME,T,<<Bin/binary,NewBin/binary>>);
+envelope(MIME, [H|T], Bin) when H =:= sender; H =:= reply_to ->
+	String = case lists:keysearch(H,1,MIME#mime.header) of
+		{value,{H,Value}} -> string_to_address(Value);
+		_ -> 
+			case lists:keysearch(from,1,MIME#mime.header) of
+				{value,{from,Value}} -> string_to_address(Value);
+				_ -> "NIL"
+			end
+	end,
 	NewBin = list_to_binary([String,32]),
 	envelope(MIME,T,<<Bin/binary,NewBin/binary>>);
 
@@ -139,7 +153,17 @@ envelope(MIME, [H|T], Bin) ->
 	envelope(MIME,T,Bin).
 
 
-string_to_address(String) -> String.
+string_to_address(String) -> 
+	AddressList = imapd_util:parse_addresses(String),
+	Addresses = lists:map(fun(A) -> 
+		[40,
+		value_or_nil(A#address.addr_name,true),32,
+		value_or_nil(A#address.addr_adl,true),32,
+		value_or_nil(A#address.addr_mailbox,true),32,
+		value_or_nil(A#address.addr_host,true),
+		41]
+		end,AddressList),
+	lists:flatten([40,Addresses,41]). 
 
 
 
@@ -329,3 +353,7 @@ body_sections(Bin,_Part,Acc) ->
 			?D(Bin),
 			{error,unknown_body_section}
 	end.
+
+value_or_nil(Value) -> value_or_nil(Value,false).
+value_or_nil([],_) -> "NIL";
+value_or_nil(Value,Boolean) -> imapd_util:quote(Value,Boolean).

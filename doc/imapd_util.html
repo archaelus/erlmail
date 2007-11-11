@@ -61,6 +61,7 @@
        in a #mailbox{} record.</td></tr>
 <tr><td valign="top"><a href="#parse-1">parse/1</a></td><td>Takes a command line from the connected IMAP client and parses the
        it into an imap_cmd{} record.</td></tr>
+<tr><td valign="top"><a href="#parse_addresses-1">parse_addresses/1</a></td><td/></tr>
 <tr><td valign="top"><a href="#quote-1">quote/1</a></td><td>Determines if the given string needs to have Double Quotes
        around it or not.</td></tr>
 <tr><td valign="top"><a href="#quote-2">quote/2</a></td><td>Determines if the given string needs to have Double Quotes
@@ -126,6 +127,10 @@
 <p><tt>parse(Line::string()) -&gt; <a href="#type-imap_cmd">imap_cmd()</a></tt></p>
 <p>Takes a command line from the connected IMAP client and parses the
        it into an imap_cmd{} record</p>
+
+<h3><a name="parse_addresses-1">parse_addresses/1</a></h3>
+<tt>parse_addresses(String) -&gt; term()
+</tt>
 
 <h3><a name="quote-1">quote/1</a></h3>
 <p><tt>quote(String::string()) -&gt; string()</tt></p>

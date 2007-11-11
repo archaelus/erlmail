@@ -6,6 +6,31 @@
 %%% @version    0.0.6
 %%% @since      0.0.6
 %%% @end
+%%%
+%%%
+%%% The MIT License
+%%%
+%%% Copyright (c) 2007 Stuart Jackson, Simple Enigma, Inc. All Righs Reserved
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%%
+%%% The above copyright notice and this permission notice shall be included in
+%%% all copies or substantial portions of the Software.
+%%%
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+%%% THE SOFTWARE.
+%%%
+%%%
 %%%---------------------------------------------------------------------------------------
 -module(imapd_util).
 -author('sjackson@simpleenigma.com').
@@ -19,7 +44,7 @@
 -export([heirachy_char/0,inbox/1]).
 -export([mailbox_info/1,mailbox_info/2,mailbox_info/3]).
 -export([out/2,out/3,send/2]).
--export([parse/1]).
+-export([parse/1,parse_addresses/1]).
 -export([quote/1,quote/2,unquote/1]).
 -export([response/1,re_split/1,re_split/4]).
 -export([split_at/1,split_at/2]).
@@ -283,6 +308,47 @@ parse(Line) ->
 		tag  = list_to_atom(string:strip(Tag)),
 		cmd  = Cmd,
 		data = NextData}.
+
+
+
+
+parse_addresses(String) -> parse_addresses(string:tokens(String,[44]),[]).
+
+parse_addresses([],Acc) -> lists:reverse(Acc);
+parse_addresses([H|T],Acc) ->
+	case regexp:split(H,"[<>@\"]") of
+		{ok,[_,PersonalName,MailBoxName,HostName,_]} -> 
+			parse_addresses(T,[#address{addr_name=PersonalName, addr_mailbox = MailBoxName, addr_host = HostName}|Acc]);
+		{ok,[_,PersonalName,_,MailBoxName,HostName,_]} -> 
+			parse_addresses(T,[#address{addr_name=PersonalName, addr_mailbox = MailBoxName, addr_host = HostName}|Acc]);
+		{ok,[_,MailBoxName,HostName,_]} -> 
+			parse_addresses(T,[#address{addr_mailbox = MailBoxName, addr_host = HostName}|Acc]);
+		{ok,[MailBoxName,HostName]} -> 
+			parse_addresses(T,[#address{addr_mailbox = MailBoxName, addr_host = HostName}|Acc]);
+		{error,Reason} -> {error,Reason};
+		Other -> Other
+	end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec (String::string()) -> string()
