@@ -49,7 +49,9 @@
 -export([response/1,re_split/1,re_split/4]).
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
--export([seq_to_list/1,list_to_seq/1]).
+-export([seq_to_list/1,list_to_seq/1,seq_message_names/2]).
+-export([store/5]).
+-export([list_to_flags/1]).
 
 %%-------------------------------------------------------------------------
 %% @spec clean(String::string()) -> string()
@@ -126,7 +128,7 @@ heirachy_char() ->
 %%-------------------------------------------------------------------------
 
 inbox(MailBoxName) ->
-	case list_to_atom(http_util:to_lower(MailBoxName)) of
+	case to_lower_atom(MailBoxName) of
 		inbox -> "INBOX";
 		_ -> MailBoxName
 	end.
@@ -163,6 +165,23 @@ list_to_seq([H|[I|_J] = T],Start,Acc) when H /= I - 1, Start > 0 ->
 list_to_seq([H|[_I|_] = T],_Start,Acc) ->
 	list_to_seq(T,0,[44,integer_to_list(H)|Acc]).
 
+
+
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> list()
+%% @doc Converts a Flag string into a list of flags
+%% @end
+%%-------------------------------------------------------------------------
+list_to_flags(String) ->
+	Tokens = string:tokens(String, [32,40,41,92]), % " ()\"
+	lists:map(fun(T) -> 
+		to_lower_atom(T)
+		end,Tokens).
+
+
+to_lower_atom(String) -> to_lower_atom(String,false).
+to_lower_atom(String,false) when is_list(String) -> list_to_atom(http_util:to_lower(String));
+to_lower_atom(String,true) when is_list(String) -> list_to_atom(http_util:to_lower(string:strip(String))).
 
 
 
@@ -228,7 +247,6 @@ mailbox_info(MailBox,{UserName,DomainName},[_H|T]) ->
 
 mailbox_info(MailBox,{_UserName,_DomainName},[]) -> MailBox.
 
-
 %%-------------------------------------------------------------------------
 %% @hidden
 %% @end
@@ -265,7 +283,7 @@ parse(Line) ->
 				{Command,Data} -> ok
 			end
 	end,
-	NextData = case list_to_atom(string:strip(http_util:to_lower(Command))) of
+	NextData = case to_lower_atom(Command,true) of
 		Cmd = login       -> clean(split_at(Data,32));
 		Cmd = select      -> clean(inbox(Data));
 		Cmd = create      -> clean(inbox(Data));
@@ -281,7 +299,7 @@ parse(Line) ->
 		Cmd = store      -> 
 			{Seq,FlagData} = imapd_util:split_at(Data),
 			{Action,Flags} = imapd_util:split_at(FlagData),
-			{Seq,Action,Flags};
+			{seq_to_list(Seq), to_lower_atom(Action), list_to_flags(Flags)};
 		Cmd = list       -> 
 			{Ref,MailBox} = re_split(Data),
 			{Ref,clean(MailBox)};
@@ -293,7 +311,7 @@ parse(Line) ->
 			{seq_to_list(Seq),imapd_fetch:tokens(NameString)};
 		Cmd = uid        -> 
 			{TypeString,Args} = clean(split_at(Data)),
-			Type = list_to_atom(http_util:to_lower(TypeString)),
+			Type = to_lower_atom(TypeString),
 			case Type of
 				fetch -> 
 					{Seq,MessageData} = clean(split_at(Args)),
@@ -403,6 +421,8 @@ response(#imap_resp{status = Status} = Resp,Acc) when is_list(Status), Status /=
 response(#imap_resp{status = Status} = Resp,Acc) when is_integer(Status), Status /= [] -> 
 	response(Resp#imap_resp{status = []},[32,integer_to_list(Status)|Acc]);
 %% CODE
+response(#imap_resp{code = Integer} = Resp,Acc) when is_integer(Integer) ->
+	response(Resp#imap_resp{code = []},[32,integer_to_list(Integer)|Acc]);
 response(#imap_resp{code = {capability,Capability}} = Resp,Acc) ->
 	response(Resp#imap_resp{code = []},[32,93,Capability,91|Acc]);
 response(#imap_resp{code = {unseen,UnSeen}} = Resp,Acc) ->
@@ -524,7 +544,6 @@ send(Message,Socket) ->
 %% @doc Converts an IMAP sequence string into a lsit of intgers
 %% @end
 %%-------------------------------------------------------------------------
-seq_to_list("1:*") -> all;
 seq_to_list([I|_] = Seq) when is_integer(I) -> seq_to_list(string:tokens(Seq,","));
 seq_to_list(Seq) -> seq_to_list(Seq,[]).
 %%-------------------------------------------------------------------------
@@ -539,10 +558,20 @@ seq_to_list([H|T],Acc) ->
 		_ ->
 			[S,E] = string:tokens(H,":"),
 			Start = list_to_integer(S),
-			End = list_to_integer(E),
+			End = list_to_integer(E), % use * as a 'get rest' command
 			seq_to_list(T,[lists:seq(Start,End)|Acc])
 	end.
 
+%%-------------------------------------------------------------------------
+%% @spec (Seq::list(),MailBox::mailbox_store()) -> MessageNameList::list()
+%% @doc Retrieves the message name from #mailbox_store for each number in 
+%%		the given sequence.
+%% @end
+%%-------------------------------------------------------------------------
+seq_message_names(Seq,MailBox) -> 
+	lists:map(fun(N) -> 
+		lists:nth(N,MailBox#mailbox_store.messages)
+		end,Seq).
 
 %%-------------------------------------------------------------------------
 %% @spec split_at(String::string()) -> {string(),string()}
@@ -573,7 +602,7 @@ split_at(String,Chr) ->
 %%-------------------------------------------------------------------------
 status_flags(String) ->
 	Tokens = string:tokens(String," ()"),
-	lists:map(fun(S) -> list_to_atom(http_util:to_lower(S)) end,Tokens).
+	lists:map(fun(S) -> to_lower_atom(S) end,Tokens).
 
 %%-------------------------------------------------------------------------
 %% @spec status_info(MailBoxInfo::tuple(),List::list()) -> list()
@@ -615,6 +644,111 @@ status_resp(List) -> status_resp(List,[]).
 status_resp([{Type,Info}|T],Acc) ->
 	status_resp(T,[32,integer_to_list(Info),32,http_util:to_upper(atom_to_list(Type))|Acc]);
 status_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
+
+
+
+
+
+store(Messages,UserName,DomainName,'flags',Flags) ->
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+			NewMessage = flags(replace,Flags,Message),
+			Store:update(NewMessage),
+			NewMessage
+		end,Messages),
+	[]; % @TODO: create FETCH responses
+store(Messages,UserName,DomainName,'flags.silent',Flags) ->
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+			NewMessage = flags(replace,Flags,Message),
+			Store:update(NewMessage),
+			NewMessage
+		end,Messages),
+	[];
+store(Messages,UserName,DomainName,'+flags',Flags) -> 
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		lists:map(fun(Flag) -> 
+			NewMessage = flags(add,Flag,Message),
+			Store:update(NewMessage),
+			NewMessage
+			end,Flags)
+		end,Messages),
+	[]; % @TODO: create FETCH responses
+store(Messages,UserName,DomainName,'+flags.silent',Flags) ->
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		lists:map(fun(Flag) -> 
+			NewMessage = flags(add,Flag,Message),
+			Store:update(NewMessage),
+			NewMessage
+			end,Flags)
+		end,Messages),
+	[];
+store(Messages,UserName,DomainName,'-flags',Flags) ->
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		lists:map(fun(Flag) -> 
+			NewMessage = flags(delete,Flag,Message),
+			Store:update(NewMessage),
+			NewMessage
+			end,Flags)
+		end,Messages),
+	[]; % @TODO: create FETCH responses
+store(Messages,UserName,DomainName,'-flags.silent',Flags) ->
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	lists:map(fun(MessageName) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		lists:map(fun(Flag) -> 
+			NewMessage = flags(delete,Flag,Message),
+			Store:update(NewMessage),
+			NewMessage
+			end,Flags)
+		end,Messages),
+	[];
+store(_Messages,_UserName,_DomainName,Action,Flags) -> 
+	?D({"Unknown Store Action: ",Action,Flags}),
+	[].
+
+
+flags(add,Flag,Message) ->
+	Flags = Message#message.flags,
+	Message#message{flags = lists:usort([Flag|Flags])};
+flags(replace,Flags,Message) ->
+	Flags = Message#message.flags,
+	NewFlags = case lists:member(recent,Flags) of
+		true -> [recent|Flags];
+		false -> Flags
+	end,
+	Message#message{flags = lists:usort(NewFlags)};
+flags(delete,Flag,Message) ->
+	Flags = Message#message.flags,
+	NewFlags = lists:delete(Flag,Flags),
+	Message#message{flags = lists:usort(NewFlags)}.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 %%-------------------------------------------------------------------------

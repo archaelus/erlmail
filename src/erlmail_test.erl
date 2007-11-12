@@ -40,27 +40,56 @@
 -compile(export_all).
 
 -define(RE_SPLIT,"^(\"[^\"]*\")").
--define(MAILBOX,"INBOX").
--define(USER,   "simpleenigma").
--define(DOMAIN, "erlsoft.net").
+-define(MAILBOX,  "INBOX").
+-define(USER,     "simpleenigma").
+-define(DOMAIN,   "erlsoft.net").
+-define(EMAIL,    "simpleenigma@erlsoft.net").
+-define(PASSWORD, "erlmail").
+
+
+
+c() -> c({10,1,1,175}).
+c(IP) -> 
+	{ok,Fsm} = imapc:connect(IP),
+	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
+	cmd(Fsm,select,"INBOX"),
+	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[flagged]}),
+	
+	cmd(Fsm,logout),
+	ok.
+
+
+
+cmd(Fsm,Cmd) ->
+	Resp = imapc:Cmd(Fsm),
+	?D(Resp),
+	Resp.
+cmd(Fsm,Cmd,{Arg1,Arg2}) ->
+	Resp = imapc:Cmd(Fsm,Arg1,Arg2),
+	?D(Resp),
+	Resp;
+cmd(Fsm,Cmd,{Arg1,Arg2,Arg3}) ->
+	Resp = imapc:Cmd(Fsm,Arg1,Arg2,Arg3),
+	?D(Resp),
+	Resp;
+cmd(Fsm,Cmd,Arg) ->
+	Resp = imapc:Cmd(Fsm,Arg),
+	?D(Resp),
+	Resp.
 
 
 
 
-a() -> a(1).
 
-a(1) -> a("<simpleenigma@erlsoft.net>");
-a(2) -> a("\"Stuart Jackson\" <simpleenigma@erlsoft.net>");
-a(3) -> a("\"Stuart Jackson\" <simpleenigma@erlsoft.net>, \"Stuart Jackson\" <simpleenigmainc@gmail.com>");
-a(4) -> a("\"Stuart Jackson\" <simpleenigma@erlsoft.net>, \"Stuart Jackson\" <simpleenigmainc@gmail.com>,<sjackson@simpleenigma.com>");
 
-a(AddressList) ->
-	imapd_util:parse_addresses(AddressList).
+
+
+
+
 
 
 
 m() -> m(35).
-
 m(Id) ->
 	Message = mail(Id),
 	mime:decode(Message).
@@ -71,29 +100,12 @@ e(Id) ->
 %	?D(MIME),
 	imapd_fetch:envelope(MIME).
 
-
-
-
 mail() -> mail(1).
 mail(Pos) ->
 	MailBox = mnesia_store:select({?MAILBOX,{?USER,?DOMAIN}}),
 	MessageName = lists:nth(Pos,MailBox#mailbox_store.messages),
 	Message = mnesia_store:select({MessageName,?USER,?DOMAIN}),
 	Message#message.message.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 f(1) -> f("ENVELOPE RFC822.SIZE UID FLAGS INTERNALDATE");
 f(2) -> f("ALL FAST FULL");

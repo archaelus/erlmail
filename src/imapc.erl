@@ -290,14 +290,14 @@ fetch(Pid,Set,Query,Tag) ->
 %%           ItemName = Atom - one of [replace,add,remove,replace_silent,add_silent,remove_silent]
 %%                      (delete is duplicate name for remove, including silent mode)
 %%           Flags     = term() - List of atoms for flag names
-%% Descrip.: Marks or unmarks all message in set with DELETED flag
+%% Descrip.: Marks or unmarks all message in set with falgs from FlagList
 %% Returns : ok
 %%--------------------------------------------------------------------
 
 store(_Pid,[],_ItemName,_Flags) -> [];
 store(Pid,Set,ItemName,Flags) -> store(Pid,Set,ItemName,Flags,imapc_util:tag()).
 store(Pid,Set,ItemName,Flags,Tag) -> 
-	gen_fsm:sync_send_event(Pid,{store,Tag,imapc_util:to_seq(Set),imapc_util:build_store(ItemName),imapc_util:build_flags(Flags)}).
+	gen_fsm:sync_send_event(Pid,{store,Tag,imapd_util:list_to_seq(Set),imapc_util:build_store(ItemName),imapc_util:build_flags(Flags)}).
 
 %%--------------------------------------------------------------------
 %% Function: copy(Pid,MailBox,StatusCodes)

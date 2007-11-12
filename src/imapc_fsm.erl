@@ -463,6 +463,7 @@ set_socket_opts(Socket) -> inet:setopts(Socket, [{active, once}, binary]).
 	Cmd = Tag ++ [32] ++ "STORE" ++ [32] ++ Set ++ [32] ++ ItemName ++ [32] ++ Flags,
 	LowerTag = imapc_util:to_low_atom(Tag),
 	imapc_util:write(Socket,Cmd),
+	?D(Cmd),
 	Resp = imapc_util:response(Socket,Tag),
 	%% @todo Process rest of command for extra responses
 	Last = lists:last(Resp),

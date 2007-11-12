@@ -54,6 +54,7 @@
 <tr><td valign="top"><a href="#heirachy_char-0">heirachy_char/0</a></td><td>Gets Heirarchy chara from config file.</td></tr>
 <tr><td valign="top"><a href="#inbox-1">inbox/1</a></td><td>Make sure that the string INBOX is always capitalized at the
        begining of the mailbox name.</td></tr>
+<tr><td valign="top"><a href="#list_to_flags-1">list_to_flags/1</a></td><td>Converts a Flag string into a list of flags.</td></tr>
 <tr><td valign="top"><a href="#list_to_seq-1">list_to_seq/1</a></td><td>Converts a list of integers into an IMAP sequence.</td></tr>
 <tr><td valign="top"><a href="#mailbox_info-1">mailbox_info/1</a></td><td>Takes a #mailbox_store{} record and returns all information in a
        #mailbox{} record.</td></tr>
@@ -69,6 +70,8 @@
 <tr><td valign="top"><a href="#re_split-1">re_split/1</a></td><td>Finds space to break string when double quotes strings are found.</td></tr>
 <tr><td valign="top"><a href="#response-1">response/1</a></td><td>Take an #imap_resp{} record and returns a response string.</td></tr>
 <tr><td valign="top"><a href="#send-2">send/2</a></td><td>Sends a Message to Socket adds CRLF if needed.</td></tr>
+<tr><td valign="top"><a href="#seq_message_names-2">seq_message_names/2</a></td><td>Retrieves the message name from #mailbox_store for each number in
+ 		the given sequence.</td></tr>
 <tr><td valign="top"><a href="#seq_to_list-1">seq_to_list/1</a></td><td>Converts an IMAP sequence string into a lsit of intgers.</td></tr>
 <tr><td valign="top"><a href="#split_at-1">split_at/1</a></td><td>Splits the given string into two strings at the first SPACE (chr(32)).</td></tr>
 <tr><td valign="top"><a href="#split_at-2">split_at/2</a></td><td>Splits the given string into two strings at the first instace of Chr.</td></tr>
@@ -77,6 +80,7 @@
 <tr><td valign="top"><a href="#status_info-2">status_info/2</a></td><td>Takes a list of status flags or a status string and returns
        information for each requested flag.</td></tr>
 <tr><td valign="top"><a href="#status_resp-1">status_resp/1</a></td><td>Takes a list of status information and returns a response string.</td></tr>
+<tr><td valign="top"><a href="#store-5">store/5</a></td><td/></tr>
 <tr><td valign="top"><a href="#unquote-1">unquote/1</a></td><td>Removes Double Quotes and white space from both sides of a string.</td></tr>
 </table>
 
@@ -108,6 +112,10 @@
 <p><tt>inbox(MailBoxName::string()) -&gt; string()</tt></p>
 <p>Make sure that the string INBOX is always capitalized at the
        begining of the mailbox name</p>
+
+<h3><a name="list_to_flags-1">list_to_flags/1</a></h3>
+<p><tt>list_to_flags(String::string()) -&gt; list()</tt></p>
+<p>Converts a Flag string into a list of flags</p>
 
 <h3><a name="list_to_seq-1">list_to_seq/1</a></h3>
 <p><tt>list_to_seq(List::list()) -&gt; string()</tt></p>
@@ -154,6 +162,11 @@
 <p><tt>send(Message::string(), Socket::port()) -&gt; ok | {error, string()}</tt></p>
 <p>Sends a Message to Socket adds CRLF if needed.</p>
 
+<h3><a name="seq_message_names-2">seq_message_names/2</a></h3>
+<p><tt>seq_message_names(Seq::list(), MailBox::<a href="#type-mailbox_store">mailbox_store()</a>) -&gt; MessageNameList::list()</tt></p>
+<p>Retrieves the message name from #mailbox_store for each number in
+ 		the given sequence.</p>
+
 <h3><a name="seq_to_list-1">seq_to_list/1</a></h3>
 <p><tt>seq_to_list(Sequence::string()) -&gt; list()</tt></p>
 <p>Converts an IMAP sequence string into a lsit of intgers</p>
@@ -179,6 +192,10 @@
 <h3><a name="status_resp-1">status_resp/1</a></h3>
 <p><tt>status_resp(List::list()) -&gt; string()</tt></p>
 <p>Takes a list of status information and returns a response string</p>
+
+<h3><a name="store-5">store/5</a></h3>
+<tt>store(Messages, UserName, DomainName, Action, Flags) -&gt; term()
+</tt>
 
 <h3><a name="unquote-1">unquote/1</a></h3>
 <p><tt>unquote(String::string()) -&gt; string()</tt></p>

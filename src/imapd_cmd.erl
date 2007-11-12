@@ -563,15 +563,20 @@ command(#imap_cmd{tag = Tag, cmd = store = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = authenticated, user = _User} = State) -> 
+command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
-	_Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
-	% @todo STORE Evaluate Seq
-	% @todo STORE Loop Through Seq and perform each action for the flags
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Selected = State#imapd_fsm.mailbox,
+	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
+	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	Messages = imapd_util:seq_message_names(Seq,MailBox),
+	_RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+%	?D(RespList),
+	% @todo: Add responses for store status
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
-	State;
+	State#imapd_fsm{mailbox = MailBox};
 
 %%%-------------------------
 %%% COPY - Authenticated
@@ -605,11 +610,12 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imap
 		all -> MailBox#mailbox_store.messages;
 		Seq when is_list(Seq) -> [] % Check list membership for UID match in Seq
 	end,
-	imapd_fetch:fetch(Messages,Items,State),
-	
-	
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State#imapd_fsm{mailbox=MailBox}),
-	State;
+	RespList = imapd_fetch:fetch(Messages,Items,State),
+	lists:map(fun(Resp) ->
+		imapd_util:send(Resp,State)
+		end, RespList),
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	State#imapd_fsm{mailbox=MailBox};
 
 
 
@@ -627,6 +633,6 @@ command(#imap_cmd{tag = Tag, cmd = Command, data = Data} = Cmd, State) ->
 		{ok,Module,Function} ->  Module:Function(Cmd, State);
 		{error,_Reason} ->
 			imapd_util:out(Command,Data,State),
-			imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: Bad Command"},State),
+			imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 			State
 	end.

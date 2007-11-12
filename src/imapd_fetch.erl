@@ -51,14 +51,12 @@
 %% @doc Takes a list of MessageName and retrieves Items for each message
 %% @end
 %%-------------------------------------------------------------------------
-fetch(List,Items,State) -> 
-	lists:map(fun(MessageName) -> 
-		do_fetch(MessageName,Items,State)
-		end,List).
+fetch(List,Items,State) -> fetch(List,Items,State,1,[]).
 
-
-
-
+fetch([],_Items,_State,_SeqNum,Acc) -> lists:reverse(Acc);
+fetch([MessageName|T],Items,State,SeqNum,Acc) ->
+	Resp = do_fetch(MessageName,Items,State),
+	fetch(T,Items,State,SeqNum+1,[Resp#imap_resp{code=SeqNum}|Acc]).
 
 
 
@@ -67,9 +65,8 @@ do_fetch(MessageName,Items,#imapd_fsm{user = User} = State) ->
 	{UserName,DomainName} = User#user.name,
 	Message = Store:select({MessageName,UserName,DomainName}),
 	MIME = mime:decode(Message#message.message),
-	P = process(Items,Message,MIME),
-	?D(P),
-	P.
+	Info = process(Items,Message,MIME),
+	#imap_resp{tag='*',cmd = fetch, info = Info}.
 
 
 process(Items,Message,MIME) -> process(Items,Message,MIME, <<>>).
@@ -102,8 +99,8 @@ process([uid|T],Message,MIME,Bin) ->
 	UIDBin = list_to_binary(UID),
 	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
 
-process([{'body.peek',Pos,Items}|T],Message,MIME,Bin) ->
-	BodyPeek = ["BODY.PEEK",32,32],
+process([{'body.peek',_Pos,_Items}|T],Message,MIME,Bin) ->
+	BodyPeek = [], % "BODY.PEEK",32,32
 	BodyPeekBin = list_to_binary(BodyPeek),
 	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
 	

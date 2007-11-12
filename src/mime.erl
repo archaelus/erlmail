@@ -97,7 +97,7 @@ headers([H|T],Acc) ->
 	Pos = string:chr(H,58),
 	{HeaderString,Value} = lists:split(Pos,H),
 	Header = list_to_atom(http_util:to_lower(string:strip(HeaderString,right,58))),
-	headers(T,[{Header,string:strip(Value)}|Acc]);
+	headers(T,[{Header,string:strip(Value)}|Acc]); %% @todo: strip tabs as well
 headers([],Acc) -> lists:reverse(Acc).
 	
 
