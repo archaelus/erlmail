@@ -605,8 +605,29 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 %%%-------------------------
 %%% COPY - Authenticated
 %%%-------------------------
-
-% @todo COPY impliment command
+command(#imap_cmd{tag = Tag, cmd = copy = Command},
+		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = copy = Command, data = []}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
+	imapd_util:out(Command,{Seq,MailBoxName},State),
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Current = Store:select(Selected),
+	Dest = Store:select({MailBoxName,User#user.name}),
+	case Dest of
+		[] -> 
+			imapd_util:send(#imap_resp{tag = Tag, status = no, code = trycreate},State);
+		Dest when is_record(Dest,mailbox_store) ->
+			Messages = imapd_util:seq_message_names(Seq,Current),
+			imapd_util:copy(Dest,Messages,State),
+			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State)
+	end,
+	State#imapd_fsm{mailbox = Current};
 
 %%%-------------------------
 %%% UID - Authenticated
@@ -618,7 +639,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected} = State) -> 
 	Items = case lists:member(uid,Data) of

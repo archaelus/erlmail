@@ -38,7 +38,7 @@
 -include("../include/erlmail.hrl").
 
 
--export([clean/1,expunge/1]).
+-export([clean/1,copy/3,expunge/1]).
 -export([flags_resp/1,flags_resp/2]).
 -export([greeting/1,greeting_capability/1]).
 -export([heirachy_char/0,inbox/1]).
@@ -67,7 +67,35 @@ clean(String) ->
 	string:strip(S2,both,32).
 
 
+%%-------------------------------------------------------------------------
+%% @spec (Dest::mailbox_store(),Messages::list(),State::imapd_fsm()) -> NewDest::mailbox_store()
+%% @doc copies existing messages to Dest mailbox
+%% @end
+%%-------------------------------------------------------------------------
+copy(Dest,Messages,#imapd_fsm{user = User} = State) -> 
+	MessageStore = erlmail_conf:lookup_atom(store_type_message,State),
+	MailBoxStore = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	{UserName,DomainName} = User#user.name,
+	NewDest = lists:foldl(fun(MessageName,MailBox) -> 
+		M = MessageStore:select({MessageName,UserName,DomainName}),
+		NewName = MessageStore:message_name(now()),
+		NewM = M#message{
+			name = {NewName,UserName,DomainName},
+			uid = MailBox#mailbox_store.uidnext,
+			flags = lists:usort([recent|M#message.flags])},
+		MessageStore:insert(NewM),
+		MailBox#mailbox_store{messages=lists:usort([NewName|MailBox#mailbox_store.messages]), 
+			uidnext = MailBox#mailbox_store.uidnext + 1}
+		end,Dest,Messages),
+	MailBoxStore:update(NewDest),
+	?D(NewDest),
+	NewDest.
 
+%%-------------------------------------------------------------------------
+%% @spec (MailBox::mailbox_store()) -> {NewMailBox::mailbox_store(),Respones::list()}
+%% @doc Permanently removes all messages with DELETED flag from MailBox
+%% @end
+%%-------------------------------------------------------------------------
 expunge(MailBox) when is_record(MailBox,mailbox_store) -> 
 	Store = erlmail_conf:lookup_atom(store_type_message),
 	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
@@ -329,6 +357,9 @@ parse(Line) ->
 		Cmd = fetch      -> 
 			{Seq,NameString} = clean(split_at(Data)),
 			{seq_to_list(Seq),imapd_fetch:tokens(NameString)};
+		Cmd = copy ->
+			{Seq,MailBoxName} = clean(re_split(Data)),
+			{seq_to_list(Seq),MailBoxName};
 		Cmd = uid        -> 
 			{TypeString,Args} = clean(split_at(Data)),
 			Type = to_lower_atom(TypeString),
@@ -443,6 +474,8 @@ response(#imap_resp{status = Status} = Resp,Acc) when is_integer(Status), Status
 %% CODE
 response(#imap_resp{code = Integer} = Resp,Acc) when is_integer(Integer) ->
 	response(Resp#imap_resp{code = []},[32,integer_to_list(Integer)|Acc]);
+response(#imap_resp{code = trycreate} = Resp,Acc) ->
+	response(Resp#imap_resp{code = []},[32,93,"TRYCREATE",91|Acc]);
 response(#imap_resp{code = {capability,Capability}} = Resp,Acc) ->
 	response(Resp#imap_resp{code = []},[32,93,Capability,91|Acc]);
 response(#imap_resp{code = {unseen,UnSeen}} = Resp,Acc) ->

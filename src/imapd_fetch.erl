@@ -1,7 +1,7 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       IMAP Server fetch routines
+%%% @doc       IMAP Server FETCH routines
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6

@@ -38,7 +38,7 @@
 -record(mailbox_store,{
 	name       = [], % Tuple {MailBoxName,USerName,DomainName}
 	subscribed = false,
-	uidnext     = 0,
+	uidnext     = 1,
 	uidvalidity = 0,
 	options    = [],
 	messages   = []

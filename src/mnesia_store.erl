@@ -56,6 +56,7 @@
 %%-------------------------------------------------------------------------
 check(_Type) -> undefined.
 
+
 %%-------------------------------------------------------------------------
 %% @spec (Type::store_type()) -> ok | undefined | {error,string()}
 %% @doc Creates store for Type.
@@ -325,6 +326,9 @@ recent({MailBoxName,UserName,DomainName}) ->
 %% @doc  Retrives Record from the correct store.
 %% @end
 %%-------------------------------------------------------------------------
+select(MailBox) when is_record(MailBox,mailbox_store)      ->
+	{MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
+	select({MailBoxName,{UserName,DomainName}});
 select(Domain)  when is_list(Domain)                       -> select(erlmail_conf:lookup_atom(mnesia_table_domain),Domain);
 select({MailBoxName,{UserName,DomainName}})                -> select(erlmail_conf:lookup_atom(mnesia_table_mailbox_store),{MailBoxName,UserName,DomainName});
 select(User)    when is_tuple(User), size(User) == 2       -> select(erlmail_conf:lookup_atom(mnesia_table_user),User);

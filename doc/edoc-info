@@ -18,6 +18,7 @@
           imapd_fetch,
           imapd_fsm,
           imapd_listener,
+          imapd_search,
           imapd_util,
           mime,
           mnesia_store,
