@@ -53,7 +53,9 @@ c(IP) ->
 	{ok,Fsm} = imapc:connect(IP),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
 	cmd(Fsm,select,"INBOX"),
-	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[flagged]}),
+	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[deleted]}),
+%	cmd(Fsm,expunge),
+	cmd(Fsm,close),
 	
 	cmd(Fsm,logout),
 	ok.

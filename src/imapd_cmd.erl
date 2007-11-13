@@ -177,10 +177,10 @@ command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 			% @todo Clean up PermanentFlag processing - figure out where to store data
 			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},State),
 			imapd_util:send(#imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"},State),
-			State#imapd_fsm{state = selected, mailbox = MailBoxStore};
+			State#imapd_fsm{state = selected, mailbox = MailBoxStore,mailbox_rw = true};
 		_ ->
 			imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "failure: no such mailbox"},State),
-			State#imapd_fsm{state = authenticated, mailbox = []}
+			State#imapd_fsm{state = authenticated, mailbox = [], mailbox_rw = false}
 	end;
 %%%-------------------------
 %%% EXAMINE - Authenticated
@@ -216,7 +216,7 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 			State#imapd_fsm{state = selected, mailbox = MailBoxStore};
 		_ ->
 			imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "failure: no such mailbox"},State),
-			State#imapd_fsm{state = authenticated, mailbox = []}
+			State#imapd_fsm{state = authenticated, mailbox = [], mailbox_rw = false}
 	end;
 %%%-------------------------
 %%% CREATE - Authenticated
@@ -509,11 +509,18 @@ command(#imap_cmd{tag = Tag, cmd = close = Command},
 	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
-		#imapd_fsm{state = selected} = State) -> 
+		#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,State),
-	% @todo CLOSE If read-write then expunge, else don't - need expunge funcation
+	case State#imapd_fsm.mailbox_rw of
+		true ->
+			Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+			{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
+			MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+			imapd_util:expunge(MailBox);
+		false -> ok
+	end,
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
-	State#imapd_fsm{mailbox = [], state = authenticated};
+	State#imapd_fsm{mailbox = [], mailbox_rw = false, state = authenticated};
 command(#imap_cmd{tag = Tag, cmd = close = Command}, State) -> 
 	imapd_util:out(Command,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
@@ -522,8 +529,25 @@ command(#imap_cmd{tag = Tag, cmd = close = Command}, State) ->
 %%%-------------------------
 %%% EXPUNGE - Authenticated
 %%%-------------------------
-
-% @todo EXPUNGE impliment command
+command(#imap_cmd{tag = Tag, cmd = expunge = Command},
+		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
+command(#imap_cmd{tag = Tag, cmd = expunge = Command, data = []}, #imapd_fsm{mailbox = Selected} = State) -> 
+	imapd_util:out(Command,State),
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
+	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	{NewMailBox,_RespList} = imapd_util:expunge(MailBox),
+	Store:update(NewMailBox),
+	% send response list
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"},State),
+	State#imapd_fsm{mailbox = NewMailBox};
+command(#imap_cmd{tag = Tag, cmd = expunge = Command}, State) -> 
+	imapd_util:out(Command,State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	State;
 
 %%%-------------------------
 %%% SEARCH - Authenticated
@@ -541,7 +565,7 @@ command(#imap_cmd{tag = Tag, cmd = fetch = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no data"},State),
+	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -> 
 	imapd_util:out(Command,State),

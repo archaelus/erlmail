@@ -13,15 +13,16 @@
 -endif.
 
 -record(imapd_fsm,{
-	socket    = [],
-	addr      = [],
-	options   = [],
-	state     = not_authenticated,  % [not_authenticated,authenticated,selected,logout]
-	user      = [],
-	mailbox   = [],
-	responses = [],
-	line      = [],
-	buff      = <<>>
+	socket     = [],
+	addr       = [],
+	options    = [],
+	state      = not_authenticated,  % [not_authenticated,authenticated,selected,logout]
+	user       = [],
+	mailbox    = [],
+	mailbox_rw = false,
+	responses  = [],
+	line       = [],
+	buff       = <<>>
 	}).
 
 -record(imapd, {

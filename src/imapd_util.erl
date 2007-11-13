@@ -38,7 +38,7 @@
 -include("../include/erlmail.hrl").
 
 
--export([clean/1]).
+-export([clean/1,expunge/1]).
 -export([flags_resp/1,flags_resp/2]).
 -export([greeting/1,greeting_capability/1]).
 -export([heirachy_char/0,inbox/1]).
@@ -65,6 +65,26 @@ clean(String) ->
 	S = string:strip(String,both,32),
 	S2 = string:strip(S,both,34),
 	string:strip(S2,both,32).
+
+
+
+expunge(MailBox) when is_record(MailBox,mailbox_store) -> 
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
+	{Messages,Responses,_Position} = lists:foldl(fun(MessageName,{M,R,Pos}) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		case lists:member(deleted,Message#message.flags) of
+			true -> 
+				Store:delete(Message),
+				Resp = #imap_resp{tag = '*', code = Pos, cmd = expunge},
+				{M,[Resp|R],Pos};
+			false ->  {[MessageName|M],R,Pos + 1}
+		end
+		end,{[],[],1},MailBox#mailbox_store.messages),
+	{MailBox#mailbox_store{messages=lists:usort(Messages)},lists:reverse(Responses)}.
+
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec flags_resp(list()) -> string()
