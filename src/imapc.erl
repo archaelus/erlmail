@@ -1,57 +1,204 @@
-%%%----------------------------------------------------------------------
-%%% File        : imapc
-%%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
-%%% Purpose     : IMAP Client API - Use these funcations instead of the FSM
-%%% Created     : 2006-11-04
-%%% Initial Rel : 0.0.1
-%%% Updated     : 2007-10-18
-%%%----------------------------------------------------------------------
+%%%---------------------------------------------------------------------------------------
+%%% @author     Stuart Jackson <simpleenigma@gmail.com> [http://erlsoft.org]
+%%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc        IMAP Client API
+%%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @version    0.0.6
+%%% @since      0.0.1
+%%% @end
+%%%
+%%%
+%%% The MIT License
+%%%
+%%% Copyright (c) 2007 Stuart Jackson, Simple Enigma, Inc. All Righs Reserved
+%%%
+%%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%%% of this software and associated documentation files (the "Software"), to deal
+%%% in the Software without restriction, including without limitation the rights
+%%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%%% copies of the Software, and to permit persons to whom the Software is
+%%% furnished to do so, subject to the following conditions:
+%%%
+%%% The above copyright notice and this permission notice shall be included in
+%%% all copies or substantial portions of the Software.
+%%%
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+%%% THE SOFTWARE.
+%%%
+%%%
+%%%---------------------------------------------------------------------------------------
 -module(imapc).
--author('sjackson@simpleenigma.com').
+-author('simpleenigma@gmail.com').
 -include("../include/erlmail.hrl").
 -include("../include/imap.hrl").
 
--export([connect/1,connect/2]).
--export([login/3,logout/1,noop/1,authenticate/2,capability/1]).
--export([select/1,select/2,close/1,examine/1,examine/2]).
+
+
+-export([append/3,append/4,append/5,capability/1,capability/2]).
+-export([check/1,check/2,connect/1,connect/2,close/1,close/2]).
+-export([copy/3,copy/4]).
+-export([login/3,logout/1,noop/1,noop/2,authenticate/2]).
+-export([select/1,select/2,examine/1,examine/2]).
 -export([create/2,delete/2,subscribe/2,unsubscribe/2,rename/3,list/3,lsub/3]).
--export([append/3,append/4,check/1,store/4,uid/3]).
--export([switch/2,copy/3,move/3,expunge/1,status/3,status/2,search/2,fetch/3,sort/3,sort/4]).
+-export([store/4,uid/3]).
+-export([switch/2,move/3,expunge/1,status/3,status/2,search/2,fetch/3,sort/3,sort/4]).
 -export([deletef/2,undeletef/2,draft/2,undraft/2,flag/2,unflag/2,seen/2,unseen/2]).
 -export([info/1,info/2]).
 -export([build/0,build/1]).
 
-%%--------------------------------------------------------------------
-%% Function: connect(IPAddress)
-%%         : connect(IPAddress,Port)
-%%           IPAddress = term() tuple, i.e {10,1,1,3}
-%%           Port      = integer(), Default 143  
-%% Descrip.: Connects to an IMAP server and starts a FSM
-%% Returns : {ok, Pid} | {error, Error}
-%%--------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Mailbox::string(),Message::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends APPEND command to FSM: APPENDs Message to Mailbox. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+append(Pid,Mailbox,Message) -> append(Pid,Mailbox,Message,[],imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Mailbox::string(),Message::string(),Flags::list()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends APPEND command to FSM: APPENDs Message to Mailbox. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+append(Pid,Mailbox,Message,[Atom|_Rest] = Flags) when is_atom(Atom) -> append(Pid,Mailbox,Message,Flags,imapc_util:tag());
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Mailbox::string(),Message::string(),Tag::sring()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends APPEND command to FSM: APPENDs Message to Mailbox. Flags is blank
+%% @end
+%%-------------------------------------------------------------------------
+append(Pid,Mailbox,Message,Tag) -> append(Pid,Mailbox,Message,[],Tag).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Mailbox::string(),Message::string(),Flags::list(),Tag::string) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends APPEND command to FSM: APPENDs Message to Mailbox.
+%% @end
+%%-------------------------------------------------------------------------
+append(Pid,Mailbox,Message,Flags,Tag) ->
+	gen_fsm:sync_send_event(Pid,{append,Tag,Mailbox,Message,imapc_util:build_flags(Flags)}).
 
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Method::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends AUTHENTICATE command to FSM. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+authenticate(Pid,Method)     -> authenticate(Pid,Method,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Method::string(),Tag::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends AUTHENTICATE command to FSM.
+%% @end
+%%-------------------------------------------------------------------------
+authenticate(Pid,Method,Tag) -> gen_fsm:sync_send_event(Pid,{authenticate,Tag,Method}).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CAPABILITY command to FSM. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+capability(Pid)     -> capability(Pid,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Tag::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CAPABILITY command to FSM.
+%% @end
+%%-------------------------------------------------------------------------
+capability(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{capability,Tag}).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CHECK command to FSM. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+check(Pid)     -> check(Pid,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Tag::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CHECK command to FSM.
+%% @end
+%%-------------------------------------------------------------------------
+check(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{check,Tag}).
+
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CLOSE command to FSM. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
+close(Pid)     -> close(Pid,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Tag::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends CLOSE command to FSM.
+%% @end
+%%-------------------------------------------------------------------------
+close(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{close,Tag}).
+
+%%-------------------------------------------------------------------------
+%% @spec (IpAddress::tuple()) -> {ok,Fsm::pid()} | {error,Reason::atom()}
+%% @doc  Connect to an IMAP server and initate a FSM. Default Port 143
+%% @end
+%%-------------------------------------------------------------------------
 connect(IPAddress) -> connect(IPAddress,143).
+%%-------------------------------------------------------------------------
+%% @spec (IpAddress::tuple(),Port::integer()) -> {ok,Fsm::pid()} | {error,Reason::atom()}
+%% @doc  Connect to an IMAP server and initate a FSM.
+%% @end
+%%-------------------------------------------------------------------------
 connect(IPAddress,Port) -> imapc_fsm:start_link(IPAddress,Port).
 
-%%--------------------------------------------------------------------
-%% Function: noop(Pid)
-%%           Pid = pid()
-%% Descrip.: Sends NOOP command to FSM: No Operation
-%% Returns : ok
-%%--------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Set::string(),DestMailbox::string()) -> {ok,Fsm::pid()} | {error,Reason::atom()}
+%% @doc  Copy messages in Set from selcted Mailbox to Destination Mailbox. Tag is automatically generated.
+%% @end
+%%-------------------------------------------------------------------------
+copy(Pid,Set,MailBox) -> copy(Pid,Set,MailBox,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Set::string(),DestMailbox::string(),Tag::string()) -> {ok,Fsm::pid()} | {error,Reason::atom()}
+%% @doc  Copy messages in Set from selcted Mailbox to Destination Mailbox.
+%% @end
+%%-------------------------------------------------------------------------
+copy(Pid,Set,MailBox,Tag) -> gen_fsm:sync_send_event(Pid,{copy,Tag,imapc_util:to_seq(Set),MailBox}).
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends NOOP command to FSM: No Operation. Tag is automaically generated
+%% @end
+%%-------------------------------------------------------------------------
 noop(Pid)     -> noop(Pid,imapc_util:tag()).
+%%-------------------------------------------------------------------------
+%% @spec (Pid::pid(),Tag::string()) -> {ok,Reason::atom()} | {error,Reason::atom()}
+%% @doc  Sends NOOP command to FSM: No Operation
+%% @end
+%%-------------------------------------------------------------------------
 noop(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{noop,Tag}).
 
-%%--------------------------------------------------------------------
-%% Function: capability(Pid)
-%%           Pid = pid()
-%% Descrip.: Sends CAPABILITY command to FSM: No Operation
-%% Returns : List of Capabilities
-%%--------------------------------------------------------------------
-
-capability(Pid)     -> capability(Pid,imapc_util:tag()).
-capability(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{capability,Tag}).
 
 %%--------------------------------------------------------------------
 %% Function: logout(Pid)
@@ -76,16 +223,6 @@ logout(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{logout,Tag}).
 login(Pid,UserName,Password)     -> login(Pid,UserName,Password,imapc_util:tag()).
 login(Pid,UserName,Password,Tag) -> gen_fsm:sync_send_event(Pid,{login,Tag,UserName,Password}).
 
-%%--------------------------------------------------------------------
-%% Function: authenticate(Pid,Method)
-%%           Pid    = pid()
-%%           Method = String() - Name of authentication method
-%% Descrip.: Initiates authentification - NOT YET IMPLIMENTED
-%% Returns : ok
-%%--------------------------------------------------------------------
-
-authenticate(Pid,Method)     -> authenticate(Pid,Method,imapc_util:tag()).
-authenticate(Pid,Method,Tag) -> gen_fsm:sync_send_event(Pid,{authenticate,Tag,Method}).
 
 
 %%--------------------------------------------------------------------
@@ -206,43 +343,9 @@ status(Pid,MailBox) -> status(Pid,MailBox,[messages,recent,uidnext,uidvalidity,u
 status(Pid,MailBox,StatusCodes) -> status(Pid,MailBox,StatusCodes,imapc_util:tag()).
 status(Pid,MailBox,StatusCodes,Tag) -> gen_fsm:sync_send_event(Pid,{status,Tag,MailBox,imapc_util:build_statuscodes(StatusCodes)}).
 
-%%--------------------------------------------------------------------
-%% Function: append(Pid,Mailbox,Message,Flags)
-%%           Pid     = pid()
-%%           Mailbox = String()
-%%           Message = string()
-%%           Flags   = term() - list of atoms
-%% Descrip.: APPENDs message to Mailbox with listed Flags
-%% Returns : ok
-%%--------------------------------------------------------------------
 
 
-append(Pid,Mailbox,Message) -> append(Pid,Mailbox,Message,imapc_util:tag()).
-append(Pid,Mailbox,Message,[Atom|_Rest] = Flags) when is_atom(Atom) -> append(Pid,Mailbox,Message,Flags,imapc_util:tag());
-append(Pid,Mailbox,Message,Tag) -> append(Pid,Mailbox,Message,[],Tag).
-append(Pid,Mailbox,Message,Flags,Tag) ->
-	gen_fsm:sync_send_event(Pid,{append,Tag,Mailbox,Message,imapc_util:build_flags(Flags)}).
 
-
-%%--------------------------------------------------------------------
-%% Function: check(Pid)
-%%           Pid = pid()
-%% Descrip.: Sends CHECK command to FSM
-%% Returns : ok
-%%--------------------------------------------------------------------
-
-check(Pid)     -> check(Pid,imapc_util:tag()).
-check(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{check,Tag}).
-
-%%--------------------------------------------------------------------
-%% Function: close(Pid)
-%%           Pid = pid()
-%% Descrip.: Send CLOSE command, closes currently selected mailbox
-%% Returns : ok
-%%--------------------------------------------------------------------
-
-close(Pid)     -> close(Pid,imapc_util:tag()).
-close(Pid,Tag) -> gen_fsm:sync_send_event(Pid,{close,Tag}).
 
 %%--------------------------------------------------------------------
 %% Function: expunge(Pid)
@@ -299,17 +402,6 @@ store(Pid,Set,ItemName,Flags) -> store(Pid,Set,ItemName,Flags,imapc_util:tag()).
 store(Pid,Set,ItemName,Flags,Tag) -> 
 	gen_fsm:sync_send_event(Pid,{store,Tag,imapd_util:list_to_seq(Set),imapc_util:build_store(ItemName),imapc_util:build_flags(Flags)}).
 
-%%--------------------------------------------------------------------
-%% Function: copy(Pid,MailBox,StatusCodes)
-%%           Pid     = pid()
-%%           Set     = list() of integer90
-%%           MailBox = string()
-%% Descrip.: Copies message set from selected mailbox to specified mailbox
-%% Returns : ok
-%%--------------------------------------------------------------------
-
-copy(Pid,Set,MailBox) -> copy(Pid,Set,MailBox,imapc_util:tag()).
-copy(Pid,Set,MailBox,Tag) -> gen_fsm:sync_send_event(Pid,{copy,Tag,imapc_util:to_seq(Set),MailBox}).
 
 
 %%--------------------------------------------------------------------
@@ -494,10 +586,23 @@ info(Pid,Type) -> imapc_fsm:info(Pid,Type).
 %% Returns : term() = results from yacc, leex or both
 %%--------------------------------------------------------------------
 -define(DEV_PATH,"/sfe/erlang/releases/lib/erlmail-" ++ ?ERLMAIL_VERSION).
+
+%%-------------------------------------------------------------------------
+%% @spec () -> term()
+%% @doc  Build LEEX and YECC grammar files for IMAP client
+%% @end
+%%-------------------------------------------------------------------------
 build() -> build(both).
-build(parser) -> yecc:file(?DEV_PATH ++ "/src/imap_parser.yrl",[{verbose,true}]);
+%%-------------------------------------------------------------------------
+%% @spec (Type::[parser | scanner | both]) -> Response::term()
+%% @doc  Build LEEX and YECC grammar files for IMAP client
+%% @end
+%%-------------------------------------------------------------------------
+build(parser)  -> yecc:file(?DEV_PATH ++ "/src/imap_parser.yrl",[{verbose,true}]);
 build(scanner) -> leex:file(?DEV_PATH ++ "/src/imap_scan.xrl");
-build(both) -> 
-	P = build(parser),
-	S = build(scanner),
+build(yecc)    -> yecc:file(?DEV_PATH ++ "/src/imap_parser.yrl",[{verbose,true}]);
+build(leex)    -> leex:file(?DEV_PATH ++ "/src/imap_scan.xrl");
+build(both)    -> 
+	P = build(yecc),
+	S = build(leex),
 	{P,S}.
