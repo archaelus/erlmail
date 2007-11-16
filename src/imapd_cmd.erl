@@ -661,6 +661,28 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imap
 		end, RespList),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=MailBox};
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, Dest}},
+	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
+	imapd_util:out(Command,{copy, UIDSeq, Dest},State),
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Current = Store:select(Selected),
+
+
+
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	State#imapd_fsm{mailbox=Current};
+
+
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action, Flags}},
+	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
+	imapd_util:out(Command,{store, UIDSeq, Action, Flags},State),
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Current = Store:select(Selected),
+
+
+
+	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	State#imapd_fsm{mailbox=Current};
 
 
 

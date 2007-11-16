@@ -49,7 +49,7 @@
 -export([response/1,re_split/1,re_split/4]).
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
--export([seq_to_list/1,list_to_seq/1,seq_message_names/2]).
+-export([seq_to_list/1,list_to_seq/1,seq_message_names/2,uidseq_message_names/2]).
 -export([store/5]).
 -export([list_to_flags/1]).
 
@@ -797,7 +797,17 @@ flags(delete,Flag,Message) ->
 
 
 
-
+uidseq_message_names(UIDSeq,MailBox) -> 
+	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
+	Store = erlmail_conf:lookup_atom(store_type_message),
+	Messages = lists:foldl(fun(MessageName,Acc) -> 
+		Message = Store:select({MessageName,UserName,DomainName}),
+		case lists:member(Message#message.uid,UIDSeq) of
+			true -> [{MessageName,Message#message.uid}|Acc];
+			false -> Acc
+		end		
+		end,[],MailBox#mailbox_store.messages),
+	lists:keysort(2,Messages).
 
 
 
