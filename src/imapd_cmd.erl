@@ -593,8 +593,8 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 	imapd_util:out(Command,{Seq,Action,Flags},State),
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
 	Selected = State#imapd_fsm.mailbox,
-	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
+	MailBox = Store:select(Selected),
 	Messages = imapd_util:seq_message_names(Seq,MailBox),
 	_RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
 %	?D(RespList),
@@ -661,14 +661,20 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imap
 		end, RespList),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=MailBox};
-command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, Dest}},
-	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
-	imapd_util:out(Command,{copy, UIDSeq, Dest},State),
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMailBox}},
+	#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
+	imapd_util:out(Command,{copy, UIDSeq, DestMailBox},State),
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
 	Current = Store:select(Selected),
-
-
-
+	Dest = Store:select({DestMailBox,User#user.name}),
+	case Dest of
+		[] -> 
+			imapd_util:send(#imap_resp{tag = Tag, status = no, code = trycreate},State);
+		Dest when is_record(Dest,mailbox_store) ->
+			Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
+			imapd_util:copy(Dest,Messages,State),
+			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State)
+	end,
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=Current};
 
@@ -677,10 +683,12 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action,
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{store, UIDSeq, Action, Flags},State),
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	Current = Store:select(Selected),
-
-
-
+	Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
+	_RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+%	?D(RespList),
+	% @todo: Add responses for store status
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=Current};
 

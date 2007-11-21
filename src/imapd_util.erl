@@ -796,7 +796,7 @@ flags(delete,Flag,Message) ->
 
 
 
-
+%%% Important to complete UID command
 uidseq_message_names(UIDSeq,MailBox) -> 
 	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
 	Store = erlmail_conf:lookup_atom(store_type_message),
