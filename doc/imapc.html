@@ -7,21 +7,32 @@
 <body bgcolor="white">
 
 <h1>Module imapc</h1>
+       IMAP Client API.
+<p>Copyright ©  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.</p>
+<ul><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+<p><b>Version:</b>    0.0.6</p>
+<p><b>Introduced in:</b>      0.0.1</p>
+<p><b>Authors:</b> Stuart Jackson (<a href="mailto:simpleenigma@gmail.com"><tt>simpleenigma@gmail.com</tt></a>) [<em>web site:</em> <tt><a href="http://erlsoft.org" target="_top">http://erlsoft.org</a></tt>].</p>
+<p><b>References</b><ul><li> See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information</li></ul></p>
 
-<ul><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
-
+<h2><a name="description">Description</a></h2>       IMAP Client API
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1"><tr><td valign="top"><a href="#append-3">append/3</a></td><td/></tr>
-<tr><td valign="top"><a href="#append-4">append/4</a></td><td/></tr>
-<tr><td valign="top"><a href="#authenticate-2">authenticate/2</a></td><td/></tr>
-<tr><td valign="top"><a href="#build-0">build/0</a></td><td/></tr>
-<tr><td valign="top"><a href="#build-1">build/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#capability-1">capability/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#check-1">check/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#close-1">close/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#connect-1">connect/1</a></td><td/></tr>
-<tr><td valign="top"><a href="#connect-2">connect/2</a></td><td/></tr>
-<tr><td valign="top"><a href="#copy-3">copy/3</a></td><td/></tr>
+<table width="100%" border="1"><tr><td valign="top"><a href="#append-3">append/3</a></td><td> Sends APPEND command to FSM: APPENDs Message to Mailbox.</td></tr>
+<tr><td valign="top"><a href="#append-4">append/4</a></td><td> Sends APPEND command to FSM: APPENDs Message to Mailbox.</td></tr>
+<tr><td valign="top"><a href="#append-5">append/5</a></td><td> Sends APPEND command to FSM: APPENDs Message to Mailbox.</td></tr>
+<tr><td valign="top"><a href="#authenticate-2">authenticate/2</a></td><td> Sends AUTHENTICATE command to FSM.</td></tr>
+<tr><td valign="top"><a href="#build-0">build/0</a></td><td> Build LEEX and YECC grammar files for IMAP client.</td></tr>
+<tr><td valign="top"><a href="#build-1">build/1</a></td><td> Build LEEX and YECC grammar files for IMAP client.</td></tr>
+<tr><td valign="top"><a href="#capability-1">capability/1</a></td><td> Sends CAPABILITY command to FSM.</td></tr>
+<tr><td valign="top"><a href="#capability-2">capability/2</a></td><td> Sends CAPABILITY command to FSM.</td></tr>
+<tr><td valign="top"><a href="#check-1">check/1</a></td><td> Sends CHECK command to FSM.</td></tr>
+<tr><td valign="top"><a href="#check-2">check/2</a></td><td> Sends CHECK command to FSM.</td></tr>
+<tr><td valign="top"><a href="#close-1">close/1</a></td><td> Sends CLOSE command to FSM.</td></tr>
+<tr><td valign="top"><a href="#close-2">close/2</a></td><td> Sends CLOSE command to FSM.</td></tr>
+<tr><td valign="top"><a href="#connect-1">connect/1</a></td><td> Connect to an IMAP server and initate a FSM.</td></tr>
+<tr><td valign="top"><a href="#connect-2">connect/2</a></td><td> Connect to an IMAP server and initate a FSM.</td></tr>
+<tr><td valign="top"><a href="#copy-3">copy/3</a></td><td> Copy messages in Set from selcted Mailbox to Destination Mailbox.</td></tr>
+<tr><td valign="top"><a href="#copy-4">copy/4</a></td><td> Copy messages in Set from selcted Mailbox to Destination Mailbox.</td></tr>
 <tr><td valign="top"><a href="#create-2">create/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#delete-2">delete/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#deletef-2">deletef/2</a></td><td/></tr>
@@ -38,7 +49,8 @@
 <tr><td valign="top"><a href="#logout-1">logout/1</a></td><td/></tr>
 <tr><td valign="top"><a href="#lsub-3">lsub/3</a></td><td/></tr>
 <tr><td valign="top"><a href="#move-3">move/3</a></td><td/></tr>
-<tr><td valign="top"><a href="#noop-1">noop/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#noop-1">noop/1</a></td><td> Sends NOOP command to FSM: No Operation.</td></tr>
+<tr><td valign="top"><a href="#noop-2">noop/2</a></td><td> Sends NOOP command to FSM: No Operation.</td></tr>
 <tr><td valign="top"><a href="#rename-3">rename/3</a></td><td/></tr>
 <tr><td valign="top"><a href="#search-2">search/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#seen-2">seen/2</a></td><td/></tr>
@@ -62,48 +74,68 @@
 <h2><a name="functions">Function Details</a></h2>
 
 <h3><a name="append-3">append/3</a></h3>
-<tt>append(Pid, Mailbox, Message) -&gt; term()
-</tt>
+<p><tt>append(Pid::pid(), Mailbox::string(), Message::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends APPEND command to FSM: APPENDs Message to Mailbox. Tag is automaically generated</p>
 
 <h3><a name="append-4">append/4</a></h3>
-<tt>append(Pid, Mailbox, Message, Rest) -&gt; term()
-</tt>
+<p><tt>append(Pid::pid(), Mailbox::string(), Message::string(), Flags::list()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends APPEND command to FSM: APPENDs Message to Mailbox. Tag is automaically generated</p>
+
+<h3><a name="append-5">append/5</a></h3>
+<p><tt>append(Pid::pid(), Mailbox::string(), Message::string(), Flags::list(), Tag::string) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends APPEND command to FSM: APPENDs Message to Mailbox.</p>
 
 <h3><a name="authenticate-2">authenticate/2</a></h3>
-<tt>authenticate(Pid, Method) -&gt; term()
-</tt>
+<p><tt>authenticate(Pid::pid(), Method::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends AUTHENTICATE command to FSM. Tag is automaically generated</p>
 
 <h3><a name="build-0">build/0</a></h3>
-<tt>build() -&gt; term()
-</tt>
+<p><tt>build() -&gt; term()</tt></p>
+<p> Build LEEX and YECC grammar files for IMAP client</p>
 
 <h3><a name="build-1">build/1</a></h3>
-<tt>build(X1) -&gt; term()
-</tt>
+<p><tt>build(Type::[parser | scanner | both]) -&gt; Response::term()</tt></p>
+<p> Build LEEX and YECC grammar files for IMAP client</p>
 
 <h3><a name="capability-1">capability/1</a></h3>
-<tt>capability(Pid) -&gt; term()
-</tt>
+<p><tt>capability(Pid::pid()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CAPABILITY command to FSM. Tag is automaically generated</p>
+
+<h3><a name="capability-2">capability/2</a></h3>
+<p><tt>capability(Pid::pid(), Tag::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CAPABILITY command to FSM.</p>
 
 <h3><a name="check-1">check/1</a></h3>
-<tt>check(Pid) -&gt; term()
-</tt>
+<p><tt>check(Pid::pid()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CHECK command to FSM. Tag is automaically generated</p>
+
+<h3><a name="check-2">check/2</a></h3>
+<p><tt>check(Pid::pid(), Tag::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CHECK command to FSM.</p>
 
 <h3><a name="close-1">close/1</a></h3>
-<tt>close(Pid) -&gt; term()
-</tt>
+<p><tt>close(Pid::pid()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CLOSE command to FSM. Tag is automaically generated</p>
+
+<h3><a name="close-2">close/2</a></h3>
+<p><tt>close(Pid::pid(), Tag::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends CLOSE command to FSM.</p>
 
 <h3><a name="connect-1">connect/1</a></h3>
-<tt>connect(IPAddress) -&gt; term()
-</tt>
+<p><tt>connect(IpAddress::tuple()) -&gt; {ok, Fsm::pid()} | {error, Reason::atom()}</tt></p>
+<p> Connect to an IMAP server and initate a FSM. Default Port 143</p>
 
 <h3><a name="connect-2">connect/2</a></h3>
-<tt>connect(IPAddress, Port) -&gt; term()
-</tt>
+<p><tt>connect(IpAddress::tuple(), Port::integer()) -&gt; {ok, Fsm::pid()} | {error, Reason::atom()}</tt></p>
+<p> Connect to an IMAP server and initate a FSM.</p>
 
 <h3><a name="copy-3">copy/3</a></h3>
-<tt>copy(Pid, Set, MailBox) -&gt; term()
-</tt>
+<p><tt>copy(Pid::pid(), Set::string(), DestMailbox::string()) -&gt; {ok, Fsm::pid()} | {error, Reason::atom()}</tt></p>
+<p> Copy messages in Set from selcted Mailbox to Destination Mailbox. Tag is automatically generated.</p>
+
+<h3><a name="copy-4">copy/4</a></h3>
+<p><tt>copy(Pid::pid(), Set::string(), DestMailbox::string(), Tag::string()) -&gt; {ok, Fsm::pid()} | {error, Reason::atom()}</tt></p>
+<p> Copy messages in Set from selcted Mailbox to Destination Mailbox.</p>
 
 <h3><a name="create-2">create/2</a></h3>
 <tt>create(Pid, MailBox) -&gt; term()
@@ -170,8 +202,12 @@
 </tt>
 
 <h3><a name="noop-1">noop/1</a></h3>
-<tt>noop(Pid) -&gt; term()
-</tt>
+<p><tt>noop(Pid::pid()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends NOOP command to FSM: No Operation. Tag is automaically generated</p>
+
+<h3><a name="noop-2">noop/2</a></h3>
+<p><tt>noop(Pid::pid(), Tag::string()) -&gt; {ok, Reason::atom()} | {error, Reason::atom()}</tt></p>
+<p> Sends NOOP command to FSM: No Operation</p>
 
 <h3><a name="rename-3">rename/3</a></h3>
 <tt>rename(Pid, OrgMailBox, NewMailBox) -&gt; term()
