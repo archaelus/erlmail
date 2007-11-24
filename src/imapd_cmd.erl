@@ -596,9 +596,8 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	MailBox = Store:select(Selected),
 	Messages = imapd_util:seq_message_names(Seq,MailBox),
-	_RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
-%	?D(RespList),
-	% @todo: Add responses for store status
+	RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox = MailBox};
 
@@ -686,9 +685,8 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action,
 	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	Current = Store:select(Selected),
 	Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
-	_RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
-%	?D(RespList),
-	% @todo: Add responses for store status
+	RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=Current};
 

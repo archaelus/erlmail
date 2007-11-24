@@ -581,15 +581,20 @@ re_split(String,RegExp,Space,Quote) ->
 %% @doc Sends a Message to Socket adds CRLF if needed.
 %% @end
 %%-------------------------------------------------------------------------
+send([],_State) -> ok;
 send(Resp,State) when is_record(Resp,imap_resp)  -> send(response(Resp),State);
+send([#imap_resp{}|_Rest] = RespList,State) when is_list(RespList) ->
+	Msg = lists:flatten(lists:map(fun(R) -> 
+		M = imapd_util:response(R), 
+		[M,13,10] 
+		end,RespList)),
+	send(Msg,State);
 send(Msg,State)  when is_record(State,imapd_fsm) -> send(Msg,State#imapd_fsm.socket);
 send(Message,Socket) ->
-%	?D(Message),
 	Msg = case string:right(Message,2) of
 		?CRLF -> [Message];
 		_      -> [Message,?CRLF]
 	end,
-%	?D(Msg),
 	gen_tcp:send(Socket,Msg).
 
 %%-------------------------------------------------------------------------
