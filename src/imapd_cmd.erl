@@ -592,14 +592,12 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) ->
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
-	Selected = State#imapd_fsm.mailbox,
-	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-	MailBox = Store:select(Selected),
-	Messages = imapd_util:seq_message_names(Seq,MailBox),
-	RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+	Current = Store:select(Selected),
+	Messages = imapd_util:seq_message_names(Seq,Current),
+	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
 	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
-	State#imapd_fsm{mailbox = MailBox};
+	State#imapd_fsm{mailbox = Current};
 
 %%%-------------------------
 %%% COPY - Authenticated
@@ -676,11 +674,9 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMail
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action, Flags}},
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{store, UIDSeq, Action, Flags},State),
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
-	{_MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-	Current = Store:select(Selected),
+	Current = gen_store:select(Selected,State),
 	Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
-	RespList = imapd_util:store(Messages,UserName,DomainName,Action,Flags),
+	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
 	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=Current};

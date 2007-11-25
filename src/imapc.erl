@@ -415,9 +415,9 @@ store(Pid,Set,ItemName,Flags,Tag) ->
 %% Returns : ok
 %%--------------------------------------------------------------------
 
-uid(Pid,fetch,{UIDSet,Query})          -> uid(Pid,fetch,{imapc_util:to_seq(UIDSet),imapc_util:build_fetch(Query)},imapc_util:tag());
-uid(Pid,copy,{UIDSet,MailBox})         -> uid(Pid,copy, {imapc_util:to_seq(UIDSet),MailBox},imapc_util:tag());
-uid(Pid,store,{UIDSet,ItemName,Flags}) -> uid(Pid,store,{imapc_util:to_seq(UIDSet),imapc_util:build_store(ItemName),imapc_util:build_flags(Flags)},imapc_util:tag());
+uid(Pid,fetch,{UIDSet,Query})          -> uid(Pid,fetch,{imapd_util:list_to_seq(UIDSet),imapc_util:build_fetch(Query)},imapc_util:tag());
+uid(Pid,copy,{UIDSet,MailBox})         -> uid(Pid,copy, {imapd_util:list_to_seq(UIDSet),MailBox},imapc_util:tag());
+uid(Pid,store,{UIDSet,ItemName,Flags}) -> uid(Pid,store,{imapd_util:list_to_seq(UIDSet),imapc_util:build_store(ItemName),imapc_util:build_flags(Flags)},imapc_util:tag());
 uid(Pid,search,Query)                  -> uid(Pid,search,imapc_util:build_search(Query),imapc_util:tag()).
 
 uid(Pid,Command,Args,Tag) -> gen_fsm:sync_send_event(Pid,{uid,Tag,Command,Args}).

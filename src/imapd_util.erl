@@ -50,7 +50,7 @@
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
 -export([seq_to_list/1,list_to_seq/1,seq_message_names/2,uidseq_message_names/2,uidseq_to_list/2]).
--export([store/5]).
+-export([store/4]).
 -export([list_to_flags/1]).
 
 %%-------------------------------------------------------------------------
@@ -368,7 +368,11 @@ parse(Line,State) ->
 					{Seq,MessageData} = clean(split_at(Args)),
 					{fetch,uidseq_to_list(Seq,State),imapd_fetch:tokens(MessageData)};
 				copy  -> {copy,Args};
-				store -> {store,Args}
+				store -> 
+					{Seq,ItemFlags} = clean(split_at(Args)),
+					{ItemName,Flags} = clean(split_at(ItemFlags)),
+					
+					{store,uidseq_to_list(Seq,State),to_lower_atom(ItemName),list_to_flags(Flags)}
 			end;
 		Cmd              -> Data
 	end,
@@ -707,71 +711,40 @@ status_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++
 
 
 
-store(Messages,UserName,DomainName,'flags',Flags) ->
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-			NewMessage = flags(replace,Flags,Message),
-			Store:update(NewMessage),
-			NewMessage
-		end,Messages),
-	[]; % @TODO: create FETCH responses
-store(Messages,UserName,DomainName,'flags.silent',Flags) ->
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-			NewMessage = flags(replace,Flags,Message),
-			Store:update(NewMessage),
-			NewMessage
-		end,Messages),
+store(Messages,State,'flags',Flags) ->
+	store_flags(Messages,State,replace,Flags);
+store(Messages,State,'flags.silent',Flags) ->
+	store_flags(Messages,State,replace,Flags),
 	[];
-store(Messages,UserName,DomainName,'+flags',Flags) -> 
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-		lists:map(fun(Flag) -> 
-			NewMessage = flags(add,Flag,Message),
-			Store:update(NewMessage),
-			NewMessage
-			end,Flags)
-		end,Messages),
-	[]; % @TODO: create FETCH responses
-store(Messages,UserName,DomainName,'+flags.silent',Flags) ->
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-		lists:map(fun(Flag) -> 
-			NewMessage = flags(add,Flag,Message),
-			Store:update(NewMessage),
-			NewMessage
-			end,Flags)
-		end,Messages),
+store(Messages,State,'+flags',Flags) -> 
+	store_flags(Messages,State,add,Flags);
+store(Messages,State,'+flags.silent',Flags) ->
+	store_flags(Messages,State,add,Flags),
 	[];
-store(Messages,UserName,DomainName,'-flags',Flags) ->
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-		lists:map(fun(Flag) -> 
-			NewMessage = flags(delete,Flag,Message),
-			Store:update(NewMessage),
-			NewMessage
-			end,Flags)
-		end,Messages),
-	[]; % @TODO: create FETCH responses
-store(Messages,UserName,DomainName,'-flags.silent',Flags) ->
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store),
-	lists:map(fun(MessageName) -> 
-		Message = Store:select({MessageName,UserName,DomainName}),
-		lists:map(fun(Flag) -> 
-			NewMessage = flags(delete,Flag,Message),
-			Store:update(NewMessage),
-			NewMessage
-			end,Flags)
-		end,Messages),
+store(Messages,State,'-flags',Flags) ->
+	store_flags(Messages,State,delete,Flags);
+store(Messages,State,'-flags.silent',Flags) ->
+	store_flags(Messages,State,delete,Flags),
 	[];
-store(_Messages,_UserName,_DomainName,Action,Flags) -> 
+store(_Messages,_State,Action,Flags) -> 
 	?D({"Unknown Store Action: ",Action,Flags}),
 	[].
+
+
+store_flags(Messages,State,Action,Flags) -> 
+	R = lists:map(fun(MessageName) -> 
+		Message = case MessageName of
+			{Name,UID} -> gen_store:select(message,Name,State);
+			MessageName -> gen_store:select(message,MessageName,State)
+		end,
+		NewMessage = lists:foldl(fun(Flag,Acc) -> 
+			flags(Action,Flag,Acc)
+			end,Message,Flags),
+		gen_store:update(NewMessage,State),
+		imapd_fetch:fetch([MessageName],[flags],State)
+	end,Messages),
+	?D(R).
+
 
 
 flags(add,Flag,Message) ->

@@ -9,8 +9,10 @@
 -module(gen_store).
 -author('sjackson@simpleenigma.com').
 -include("../include/erlmail.hrl").
+-include("../include/imap.hrl").
 
 -export([message_name/1,lookup/1,lookup/2]).
+-export([select/2,select/3,update/2]).
 -export([behaviour_info/1]).
 
 behaviour_info(callbacks) -> [{create,1},{drop,1},{insert,1},{update,1},{delete,1},{select,2},
@@ -19,6 +21,34 @@ behaviour_info(callbacks) -> [{create,1},{drop,1},{insert,1},{update,1},{delete,
 								{unseen,1},{recent,1},{mlist,3}
 								];
 behaviour_info(_Other) -> undefined.
+
+
+
+
+select(MailBox,State) when is_record(MailBox,mailbox_store) -> 
+	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Store:select(MailBox).
+
+
+select(message,MessageName,#imapd_fsm{user = User} = State) ->
+	Store = erlmail_conf:lookup_atom(store_type_message,State),
+	{UserName,DomainName} = User#user.name,
+	Store:select({MessageName,UserName,DomainName}).
+
+
+update(Message,State) when is_record(Message,message) ->
+	Store = erlmail_conf:lookup_atom(store_type_message,State),
+	Store:update(Message).
+
+
+
+
+
+
+
+
+
+
 
 
 

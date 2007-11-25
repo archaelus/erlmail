@@ -82,7 +82,7 @@
 <tr><td valign="top"><a href="#status_info-2">status_info/2</a></td><td>Takes a list of status flags or a status string and returns
        information for each requested flag.</td></tr>
 <tr><td valign="top"><a href="#status_resp-1">status_resp/1</a></td><td>Takes a list of status information and returns a response string.</td></tr>
-<tr><td valign="top"><a href="#store-5">store/5</a></td><td/></tr>
+<tr><td valign="top"><a href="#store-4">store/4</a></td><td/></tr>
 <tr><td valign="top"><a href="#uidseq_message_names-2">uidseq_message_names/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#uidseq_to_list-2">uidseq_to_list/2</a></td><td>Converts an IMAP sequence string into a lsit of intgers.</td></tr>
 <tr><td valign="top"><a href="#unquote-1">unquote/1</a></td><td>Removes Double Quotes and white space from both sides of a string.</td></tr>
@@ -205,8 +205,8 @@
 <p><tt>status_resp(List::list()) -&gt; string()</tt></p>
 <p>Takes a list of status information and returns a response string</p>
 
-<h3><a name="store-5">store/5</a></h3>
-<tt>store(Messages, UserName, DomainName, Action, Flags) -&gt; term()
+<h3><a name="store-4">store/4</a></h3>
+<tt>store(Messages, State, Action, Flags) -&gt; term()
 </tt>
 
 <h3><a name="uidseq_message_names-2">uidseq_message_names/2</a></h3>

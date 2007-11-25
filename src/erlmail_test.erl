@@ -52,11 +52,12 @@ c() -> c({10,1,1,175}).
 c(IP) -> 
 	{ok,Fsm} = imapc:connect(IP),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
-	cmd(Fsm,select,"INBOX"),
+	cmd(Fsm,select,"Test"),
 %	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[deleted]}),
 %	cmd(Fsm,expunge),
 %	cmd(Fsm,copy,{[35],"Test"}),
 %	cmd(Fsm,uid,{fetch,{"1,2,3,4",[envelope]}}),
+	cmd(Fsm,uid,{fetch,{[1],[flags]}}),
 
 
 %	cmd(Fsm,close),
