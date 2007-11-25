@@ -55,8 +55,8 @@ c(IP) ->
 	cmd(Fsm,select,"INBOX"),
 %	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[deleted]}),
 %	cmd(Fsm,expunge),
-	cmd(Fsm,copy,{[35],"Test"}),
-
+%	cmd(Fsm,copy,{[35],"Test"}),
+%	cmd(Fsm,uid,{fetch,{"1,2,3,4",[envelope]}}),
 
 
 %	cmd(Fsm,close),

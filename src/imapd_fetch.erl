@@ -54,6 +54,9 @@
 fetch(List,Items,State) -> fetch(List,Items,State,1,[]).
 
 fetch([],_Items,_State,_SeqNum,Acc) -> lists:reverse(Acc);
+fetch([{MessageName,UID}|T],Items,State,SeqNum,Acc) ->
+	Resp = do_fetch(MessageName,Items,State),
+	fetch(T,Items,State,SeqNum+1,[Resp#imap_resp{code=UID}|Acc]);
 fetch([MessageName|T],Items,State,SeqNum,Acc) ->
 	Resp = do_fetch(MessageName,Items,State),
 	fetch(T,Items,State,SeqNum+1,[Resp#imap_resp{code=SeqNum}|Acc]).

@@ -62,7 +62,7 @@
        #mailbox{} record.</td></tr>
 <tr><td valign="top"><a href="#mailbox_info-2">mailbox_info/2</a></td><td>Takes a #mailbox_store{} record and returns information from Flags
        in a #mailbox{} record.</td></tr>
-<tr><td valign="top"><a href="#parse-1">parse/1</a></td><td>Takes a command line from the connected IMAP client and parses the
+<tr><td valign="top"><a href="#parse-2">parse/2</a></td><td>Takes a command line from the connected IMAP client and parses the
        it into an imap_cmd{} record.</td></tr>
 <tr><td valign="top"><a href="#parse_addresses-1">parse_addresses/1</a></td><td/></tr>
 <tr><td valign="top"><a href="#quote-1">quote/1</a></td><td>Determines if the given string needs to have Double Quotes
@@ -84,6 +84,7 @@
 <tr><td valign="top"><a href="#status_resp-1">status_resp/1</a></td><td>Takes a list of status information and returns a response string.</td></tr>
 <tr><td valign="top"><a href="#store-5">store/5</a></td><td/></tr>
 <tr><td valign="top"><a href="#uidseq_message_names-2">uidseq_message_names/2</a></td><td/></tr>
+<tr><td valign="top"><a href="#uidseq_to_list-2">uidseq_to_list/2</a></td><td>Converts an IMAP sequence string into a lsit of intgers.</td></tr>
 <tr><td valign="top"><a href="#unquote-1">unquote/1</a></td><td>Removes Double Quotes and white space from both sides of a string.</td></tr>
 </table>
 
@@ -142,8 +143,8 @@
 <p>Takes a #mailbox_store{} record and returns information from Flags
        in a #mailbox{} record</p>
 
-<h3><a name="parse-1">parse/1</a></h3>
-<p><tt>parse(Line::string()) -&gt; <a href="#type-imap_cmd">imap_cmd()</a></tt></p>
+<h3><a name="parse-2">parse/2</a></h3>
+<p><tt>parse(Line::string(), State::<a href="#type-imapd_fsm">imapd_fsm()</a>) -&gt; <a href="#type-imap_cmd">imap_cmd()</a></tt></p>
 <p>Takes a command line from the connected IMAP client and parses the
        it into an imap_cmd{} record</p>
 
@@ -211,6 +212,10 @@
 <h3><a name="uidseq_message_names-2">uidseq_message_names/2</a></h3>
 <tt>uidseq_message_names(UIDSeq, MailBox) -&gt; term()
 </tt>
+
+<h3><a name="uidseq_to_list-2">uidseq_to_list/2</a></h3>
+<p><tt>uidseq_to_list(Sequence::string(), State::<a href="#type-imapd_fsm">imapd_fsm()</a>) -&gt; list()</tt></p>
+<p>Converts an IMAP sequence string into a lsit of intgers</p>
 
 <h3><a name="unquote-1">unquote/1</a></h3>
 <p><tt>unquote(String::string()) -&gt; string()</tt></p>

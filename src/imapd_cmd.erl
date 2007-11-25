@@ -46,7 +46,7 @@
 %% @end
 %%-------------------------------------------------------------------------
 command(#imapd_fsm{line = Line} = State) -> 
-	Command = imapd_util:parse(Line),
+	Command = imapd_util:parse(Line,State),
 	io:format("Command: ~p~n",[Command]),
 	command(Command,State).
 
@@ -643,21 +643,16 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected} = State) -> 
 	Items = case lists:member(uid,Data) of
 		true -> Data;
-		flase -> lists:usort([uid|Data])
+		false -> lists:usort([uid|Data])
 	end,
 	imapd_util:out(Command,{fetch,Seq,Items},State),
 	Selected = State#imapd_fsm.mailbox,
 	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
 	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
-	Messages = case Seq of
-		all -> MailBox#mailbox_store.messages;
-		Seq when is_list(Seq) -> [] % Check list membership for UID match in Seq
-	end,
+	Messages = imapd_util:uidseq_message_names(Seq,MailBox),
 	RespList = imapd_fetch:fetch(Messages,Items,State),
-	lists:map(fun(Resp) ->
-		imapd_util:send(Resp,State)
-		end, RespList),
+	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=MailBox};
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMailBox}},

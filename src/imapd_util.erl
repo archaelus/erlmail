@@ -44,12 +44,12 @@
 -export([heirachy_char/0,inbox/1]).
 -export([mailbox_info/1,mailbox_info/2,mailbox_info/3]).
 -export([out/2,out/3,send/2]).
--export([parse/1,parse_addresses/1]).
+-export([parse/2,parse_addresses/1]).
 -export([quote/1,quote/2,unquote/1]).
 -export([response/1,re_split/1,re_split/4]).
 -export([split_at/1,split_at/2]).
 -export([status_flags/1,status_resp/1,status_info/2]).
--export([seq_to_list/1,list_to_seq/1,seq_message_names/2,uidseq_message_names/2]).
+-export([seq_to_list/1,list_to_seq/1,seq_message_names/2,uidseq_message_names/2,uidseq_to_list/2]).
 -export([store/5]).
 -export([list_to_flags/1]).
 
@@ -307,7 +307,7 @@ out(Command,State) -> io:format("~p ~p~n",[State#imapd_fsm.addr,Command]).
 out(Command,Param,State) -> io:format("~p ~p ~p~n",[State#imapd_fsm.addr,Command,Param]).
 
 %%-------------------------------------------------------------------------
-%% @spec parse(Line::string()) -> imap_cmd()
+%% @spec parse(Line::string(),State::imapd_fsm()) -> imap_cmd()
 %% @type imap_cmd() = {imap_cmd,line(),tag(),comamnd(),cmd_data()}
 %% @type line() = string()
 %% @type command() = atom()
@@ -319,7 +319,7 @@ out(Command,Param,State) -> io:format("~p ~p ~p~n",[State#imapd_fsm.addr,Command
 %% @end
 %%-------------------------------------------------------------------------
 
-parse(Line) ->
+parse(Line,State) ->
 	case split_at(Line,32) of
 		{Tag,[]} -> 
 			Command = [],
@@ -366,7 +366,7 @@ parse(Line) ->
 			case Type of
 				fetch -> 
 					{Seq,MessageData} = clean(split_at(Args)),
-					{fetch,seq_to_list(Seq),imapd_fetch:tokens(MessageData)};
+					{fetch,uidseq_to_list(Seq,State),imapd_fetch:tokens(MessageData)};
 				copy  -> {copy,Args};
 				store -> {store,Args}
 			end;
@@ -797,8 +797,37 @@ flags(delete,Flag,Message) ->
 
 
 
-
-
+%%-------------------------------------------------------------------------
+%% @spec (Sequence::string(),State::imapd_fsm()) -> list()
+%% @doc Converts an IMAP sequence string into a lsit of intgers
+%% @end
+%%-------------------------------------------------------------------------
+uidseq_to_list([I|_] = Seq,State) when is_integer(I) -> uidseq_to_list(string:tokens(Seq,","),State);
+uidseq_to_list(Seq,State) -> uidseq_to_list(Seq,State,[]).
+%%-------------------------------------------------------------------------
+%% @spec (Sequence::string(),State::imapd_fsm(),list()) -> list()
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
+uidseq_to_list([],_State,Acc) -> lists:usort(lists:flatten(lists:reverse(Acc)));
+uidseq_to_list([H|T],State,Acc) ->
+	case catch list_to_integer(H) of
+		Int when is_integer(Int) -> seq_to_list(T,[Int|Acc]);
+		_ ->
+			[S,E] = string:tokens(H,":"),
+			Start = list_to_integer(S),
+			End = case E of	
+				"*" -> 
+					MailBox = State#imapd_fsm.mailbox,
+					MailBox#mailbox_store.uidnext - 1;
+				E when is_list(E) -> list_to_integer(E)
+			end,
+			if
+				Start =< End -> uidseq_to_list(T,State,[lists:seq(Start,End)|Acc]);
+				true ->  uidseq_to_list(T,State,Acc)
+			end
+			
+	end.
 
 
 %%% Important to complete UID command
