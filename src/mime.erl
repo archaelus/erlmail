@@ -49,7 +49,38 @@
 %% @doc Encodes a #mime{} record into a string
 %% @end
 %%-------------------------------------------------------------------------
-encode(_Message) -> ok.
+encode(MIME) ->
+	Header = enc_header(MIME#mime.header),
+	Body = case MIME#mime.body of
+		[#mime{}|_] = MIMEBody -> encode(MIMEBody);
+		TextBody -> TextBody
+	end,
+	lists:flatten([Header,13,10,Body]).
+	
+
+
+enc_header(MIME) -> enc_header(MIME,[]).
+
+enc_header([],Acc) -> lists:reverse(Acc);
+enc_header([{from,From}|Rest],Acc) ->
+	enc_header(Rest,[10,13,From,32,"From:"|Acc]);
+enc_header([{to,To}|Rest],Acc) ->
+	enc_header(Rest,[10,13,To,32,"To:"|Acc]);
+enc_header([{subject,Subject}|Rest],Acc) ->
+	enc_header(Rest,[10,13,Subject,32,"Subject:"|Acc]);
+enc_header([{Atom,_Value}|Rest],Acc) ->
+	enc_header(Rest,[10,13,58,atom_to_list(Atom)|Acc]).
+
+
+
+
+
+
+
+
+
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec (Mime::mime()) -> mime() | {error,Reason::atom()}
