@@ -11,7 +11,6 @@
           imapc,
           imapc_fsm,
           imapc_util,
-          imapd,
           imapd_app,
           imapd_cmd,
           imapd_ext,
