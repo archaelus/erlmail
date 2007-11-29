@@ -69,6 +69,7 @@ do_fetch(MessageName,Items,#imapd_fsm{user = User} = State) ->
 	Message = Store:select({MessageName,UserName,DomainName}),
 	MIME = mime:decode(Message#message.message),
 	Info = process(Items,Message,MIME),
+	?D(Info),
 	#imap_resp{tag='*',cmd = fetch, info = Info}.
 
 
@@ -76,6 +77,13 @@ process(Items,Message,MIME) -> process(Items,Message,MIME, <<>>).
 
 process([],_Message,_MIME,Bin) -> 
 	lists:flatten([40,string:strip(binary_to_list(Bin)),41]);
+
+process(['body.peek'|T],Message,MIME,Bin) ->
+	?D('body.peek'),
+	BodyPeek = ["BODY.PEEK",32,32],
+	BodyPeekBin = list_to_binary(BodyPeek),
+	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
+
 
 process(['envelope'|T],Message,MIME,Bin) ->
 	Envelope = ["ENVELOPE",32,envelope(MIME),32],
@@ -92,6 +100,7 @@ process(['internaldate'|T],Message,MIME,Bin) ->
 	InternalDateBin = list_to_binary(InternalDate),
 	process(T,Message,MIME,<<Bin/binary,InternalDateBin/binary>>);
 
+
 process(['rfc822.size'|T],Message,MIME,Bin) ->
 	Size = ["RFC822.SIZE",32,integer_to_list(length(Message#message.message)),32],
 	SizeBin = list_to_binary(Size),
@@ -102,11 +111,23 @@ process([uid|T],Message,MIME,Bin) ->
 	UIDBin = list_to_binary(UID),
 	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
 
+process([{'body.peek',_Pos,[]}|T],Message,MIME,Bin) ->
+	BodyPeekText = MIME#mime.body_text,
+	BodyPeek = ["BODY.PEEK",32,123,integer_to_list(length(BodyPeekText)),125,13,10,BodyPeekText,32],
+	?D(BodyPeek),
+	BodyPeekBin = list_to_binary(BodyPeek),
+	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
+
 process([{'body.peek',_Pos,_Items}|T],Message,MIME,Bin) ->
 	BodyPeek = [], % "BODY.PEEK",32,32
 	BodyPeekBin = list_to_binary(BodyPeek),
 	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
-	
+
+process(['rfc822'|T],Message,MIME,Bin) ->
+	Size = length(Message#message.message),
+	RFC822 = ["RFC822",32,123,integer_to_list(Size),125,13,10,Message#message.message,32],
+	RFC822Bin = list_to_binary(RFC822),
+	process(T,Message,MIME,<<Bin/binary,RFC822Bin/binary>>);
 
 process([H|T],Message,MIME,Bin) ->
 	?D({"Cannot Process: ",H}),

@@ -1,10 +1,11 @@
 %%%---------------------------------------------------------------------------------------
-%%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
-%%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc        IMAP server utility functions
-%%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
-%%% @version    0.0.6
-%%% @since      0.0.6
+%%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
+%%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc       IMAP server utility functions
+%%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
+%%% @version   0.0.6
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -732,9 +733,9 @@ store(_Messages,_State,Action,Flags) ->
 
 
 store_flags(Messages,State,Action,Flags) -> 
-	R = lists:map(fun(MessageName) -> 
+	Resp = lists:map(fun(MessageName) -> 
 		Message = case MessageName of
-			{Name,UID} -> gen_store:select(message,Name,State);
+			{Name,_UID} -> gen_store:select(message,Name,State);
 			MessageName -> gen_store:select(message,MessageName,State)
 		end,
 		NewMessage = lists:foldl(fun(Flag,Acc) -> 
@@ -743,7 +744,7 @@ store_flags(Messages,State,Action,Flags) ->
 		gen_store:update(NewMessage,State),
 		imapd_fetch:fetch([MessageName],[flags],State)
 	end,Messages),
-	?D(R).
+	lists:flatten(Resp).
 
 
 

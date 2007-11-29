@@ -1,10 +1,12 @@
-%%%----------------------------------------------------------------------
-%%% File        : smtpc_fsm
-%%% Author      : Stuart Jackson <sjackson@simpleenigma.com> [http://www.simpleenigma.com]
-%%% Purpose     : ErlMail Test functions
-%%% Created     : 2006-12-14
-%%% Initial Rel : 0.0.1
-%%% Updated     : 2007-10-18
+%%%---------------------------------------------------------------------------------------
+%%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
+%%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc       ErlMail Test functions
+%%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
+%%% @version   0.0.6
+%%% @since     0.0.1
+%%% @end
 %%%
 %%%
 %%% The MIT License
@@ -57,7 +59,8 @@ c(IP) ->
 %	cmd(Fsm,expunge),
 %	cmd(Fsm,copy,{[35],"Test"}),
 %	cmd(Fsm,uid,{fetch,{"1,2,3,4",[envelope]}}),
-	cmd(Fsm,uid,{fetch,{[1],[flags]}}),
+%	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
+	cmd(Fsm,fetch,{[1],['rfc822']}),
 
 
 %	cmd(Fsm,close),
@@ -65,6 +68,43 @@ c(IP) ->
 	ok.
 
 
+
+
+
+
+clear() -> 
+	mnesia:clear_table(erlmail_message),
+	mnesia:clear_table(erlmail_mailbox_store),
+	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","erlsoft.net"}}),
+	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","orgonite.com"}}),
+	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","cloud-busters.com"}}),
+	ok.
+
+
+test_message() ->
+	IPAddress = {76,204,23,210},
+	Port = 25,
+	Host = "simpleenigma.com",
+	From = "sjackson@simpleenigma.com",
+	To = "simpleenigma@erlsoft.net",
+	Message = m(From,To,"Test","This is a test message"),
+	?D(Message),
+	smtpc:sendmail(IPAddress,Port,Host,From,To,Message).
+
+
+
+m() ->
+	m("sjackson@simpleenigma.com","simpleenigma@erlsoft.net","Test","This is a test message").
+m(From,To,Subject,Message) ->
+	MIME = #mime{header=[{from,From},{to,To},{subject,Subject}],body = Message},
+	mime:encode(MIME).
+
+
+
+
+
+
+%%% Keep these funcations
 
 cmd(Fsm,Cmd) ->
 	Resp = imapc:Cmd(Fsm),
@@ -82,56 +122,3 @@ cmd(Fsm,Cmd,Arg) ->
 	Resp = imapc:Cmd(Fsm,Arg),
 	?D(Resp),
 	Resp.
-
-
-
-
-
-
-
-
-
-
-
-
-
-m() -> m(35).
-m(Id) ->
-	Message = mail(Id),
-	mime:decode(Message).
-
-e() -> e(35).
-e(Id) ->
-	MIME = m(Id),
-%	?D(MIME),
-	imapd_fetch:envelope(MIME).
-
-mail() -> mail(1).
-mail(Pos) ->
-	MailBox = mnesia_store:select({?MAILBOX,{?USER,?DOMAIN}}),
-	MessageName = lists:nth(Pos,MailBox#mailbox_store.messages),
-	Message = mnesia_store:select({MessageName,?USER,?DOMAIN}),
-	Message#message.message.
-
-f(1) -> f("ENVELOPE RFC822.SIZE UID FLAGS INTERNALDATE");
-f(2) -> f("ALL FAST FULL");
-f(3) -> f("RFC822 RFC822.SIZE RFC822.TEXT RFC822.HEADER");
-f(4) -> f("(BODY.PEEK[HEADER.FIELDS (References X-Ref X-Priority X-MSMail-Priority X-MSOESRec Newsgroups)] ENVELOPE RFC822.SIZE UID FLAGS INTERNALDATE)");
-f(5) -> f("BODY.PEEK[4.2.HEADER 1.1.HEADER]");
-f(6) -> f("BODY[TEXT]<21.200>");
-
-
-f(String) -> 
-	io:format("Test: ~s~n",[String]),
-	imapd_util:fetch_tokens(String).
-
-
-re_split(1) -> re_split("test test test");
-re_split(2) -> re_split("\"test test\" test");
-re_split(3) -> re_split("test \"test test\"");
-re_split(4) -> re_split("\"\" \"*\"");
-re_split(5) -> re_split("\"test test\" \"test test\"");
-re_split(6) -> re_split("\"Sent Items/testing\" \"Sent Items/testing folders\"");
-re_split(7) -> re_split("\"Sent Items\" (MESSAGES UNSEEN)");
-
-re_split(String) -> imapd_util:re_split(String,?RE_SPLIT,32,34).

@@ -1,10 +1,11 @@
 %%%---------------------------------------------------------------------------------------
-%%% @author     Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
-%%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc        IMAP server command processing
-%%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
-%%% @version    0.0.6
-%%% @since      0.0.6
+%%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
+%%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
+%%% @doc       IMAP server command processing
+%%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
+%%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
+%%% @version   0.0.6
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -75,9 +76,7 @@ command(#imap_cmd{tag = Tag, cmd = capability = Command, data = Data}, State) ->
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = noop = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	lists:map(fun(Response) -> 
-		imapd_util:send(Response,State)
-		end, State#imapd_fsm.responses),
+	imapd_util:send(State#imapd_fsm.responses,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{responses = []};
 command(#imap_cmd{tag = Tag, cmd = noop = Command, data = Data}, State) -> 
@@ -638,18 +637,18 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 	imapd_util:out(Command,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},#imapd_fsm{state = selected} = State) -> 
+command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
+	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	Items = case lists:member(uid,Data) of
 		true -> Data;
 		false -> lists:usort([uid|Data])
 	end,
 	imapd_util:out(Command,{fetch,Seq,Items},State),
-	Selected = State#imapd_fsm.mailbox,
-	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
-	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	MailBox = gen_store:select(Selected,State),
 	Messages = imapd_util:uidseq_message_names(Seq,MailBox),
+	?D(Messages),
 	RespList = imapd_fetch:fetch(Messages,Items,State),
+%	?D(RespList),
 	imapd_util:send(RespList,State),
 	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=MailBox};
