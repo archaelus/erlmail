@@ -42,12 +42,15 @@
 	}).
 
 -record(imap_resp,{
-	tag    = [],
-	status = [], % OK, NO, BAD, PREAUTH, BYE
-	code   = [], % ALERT, BADCHARSET, CAPABILITY, PARSE, PERMANENTFLAGS, READ_ONLY, READ_WRITE, TRYCREATE, UIDNEXT, UIDVALIDITY, UNSEEN - found inside []
-	data   = [],
-	cmd    = [],
-	info   = []
+	pid       = [], % needed for IMAP response server
+	mailbox   = [], % needed for IMAP response server
+	timestamp = [], % needed for IMAP response server
+	tag       = [],
+	status    = [], % OK, NO, BAD, PREAUTH, BYE
+	code      = [], % ALERT, BADCHARSET, CAPABILITY, PARSE, PERMANENTFLAGS, READ_ONLY, READ_WRITE, TRYCREATE, UIDNEXT, UIDVALIDITY, UNSEEN - found inside []
+	data      = [],
+	cmd       = [],
+	info      = []
 	}).
 
 -record(imap_cmd,{
