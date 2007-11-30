@@ -1,11 +1,11 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       ErlMail package start and stop funcations
+%%% @doc       ErlMail message store server
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
-%%% @since     0.0.3
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -33,37 +33,29 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(erlmail).
+-module(erlmail_store).
 -author('sjackson@simpleenigma.com').
+-include("../include/imap.hrl").
+-include("../include/erlmail.hrl").
 
--export([start/0,stop/0,restart/0,reload/0]).
+-behaviour(gen_server).
+
+%% External API
+-export([start_link/2]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
+         code_change/3]).
 
 
-start() -> 
-	io:format("Starting ErlMail ...~n"),
-	application:start(smtpd),
-	application:start(imapd).
 
-stop() ->
-	io:format("Stopping ErlMail ...~n"),
-	application:stop(smtpd),
-	application:stop(imapd).
 
-restart() ->
-	stop(),
-	reload(),
-	start().
 
-reload() ->
-	io:format("Reloading ErlMail Modules ...~n"),
-	reload:reload([
-		erlmail_conf,erlmail_util,erlmail_store,
-		gen_store,dets_store,mnesia_store,
-		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
-		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
-		mime,
-		smtpd_app,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
-		smtpc,smtpc_fsm,smtpc_util,
-		erlmail_test
-		]).
-	
+
+start_link(_,_) -> ok.
+code_change(_,_,_) -> ok.
+handle_call(_,_,_) -> ok.
+handle_cast(_,_) -> ok.
+handle_info(_,_) -> ok.
+init(_) -> ok.
+terminate(_,_) -> ok.
