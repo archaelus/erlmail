@@ -41,15 +41,17 @@
 -export([connect/2,data/2,ehlo/2,etrn/2,expn/2,helo/2,mail/2]).
 -export([sendmail/5,sendmail/6]).
 
-%%--------------------------------------------------------------------
-%% Function: connect(IPAddress)
-%%         : connect(IPAddress,Port)
-%%           IPAddress = term() tuple, i.e {10,1,1,3}
-%%           Port      = integer(), Default 143  
-%% Descrip.: Connects to an SMTP server and starts a FSM
-%% Returns : {ok, Pid} | {error, Error}
-%%--------------------------------------------------------------------
+%%-------------------------------------------------------------------------
+%% @spec (IpAddress::term()) -> {ok,Pid::pid()} | {error,Reason::atom()}
+%% @doc  Connects to an SMTP server and starts a FSM
+%% @end
+%%-------------------------------------------------------------------------
 connect(IPAddress) -> connect(IPAddress,25).
+%%-------------------------------------------------------------------------
+%% @spec (IpAddress::term(),Port::integer()) -> {ok,Pid::pid()} | {error,Reason::atom()}
+%% @doc  Connects to an SMTP server and starts a FSM
+%% @end
+%%-------------------------------------------------------------------------
 connect(IPAddress,Port) -> smtpc_fsm:start(IPAddress,Port).
 
 %%--------------------------------------------------------------------
