@@ -157,6 +157,7 @@ handle_info(_Info, State) ->
 %% @private
 %%-------------------------------------------------------------------------
 terminate(_Reason, State) ->
+	io:format("Stopping IMAP Listener ...~n"),
     gen_tcp:close(State#imapd.listener),
     ok.
 

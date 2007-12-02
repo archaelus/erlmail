@@ -41,48 +41,138 @@
 -behaviour(gen_server).
 
 %% External API
--export([start_link/2]).
+-export([start_link/0,stop/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 % Mnesia control functions
--export([create/0,join/0,exit/0,check/0,check/1]).
+-export([create/0,join/0,remove/0,check/0,check/1]).
 
 
 
 
+start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-start_link(_,_) -> ok.
-code_change(_,_,_) -> ok.
-handle_call(_,_,_) -> ok.
-handle_cast(_,_) -> ok.
+stop() -> gen_server:cast(?MODULE,stop).
+
+
+%%-------------------------------------------------------------------------
+%% @spec (OldVsn, State, Extra) -> {ok, NewState}
+%% @doc  Convert process state when code is changed.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%-------------------------------------------------------------------------
+%% @spec (Request, From, State) -> {reply, Reply, State}          |
+%%                                 {reply, Reply, State, Timeout} |
+%%                                 {noreply, State}               |
+%%                                 {noreply, State, Timeout}      |
+%%                                 {stop, Reason, Reply, State}   |
+%%                                 {stop, Reason, State}
+%% @doc Callback for synchronous server calls.  If `{stop, ...}' tuple
+%%      is returned, the server is stopped and `terminate/2' is called.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+handle_call(Request, _From, State) ->
+    {stop, {unknown_call, Request}, State}.
+
+%%-------------------------------------------------------------------------
+%% @spec (Msg, State) ->{noreply, State}          |
+%%                      {noreply, State, Timeout} |
+%%                      {stop, Reason, State}
+%% @doc Callback for asyncrous server calls.  If `{stop, ...}' tuple
+%%      is returned, the server is stopped and `terminate/2' is called.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+handle_cast(stop,State) ->
+	{stop, normal, State};
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+
+
 handle_info(_,_) -> ok.
-init(_) -> check(join).
-terminate(_,_) -> exit().
 
 
-% mnesia rotines
+%%----------------------------------------------------------------------
+%% @spec (Unused::term()) -> {ok, State}           |
+%%                            {ok, State, Timeout}  |
+%%                            ignore                |
+%%                            {stop, Reason}
+%%
+%% @doc Called by gen_server framework at process startup.
+%%      Create listening socket.
+%% @end
+%%----------------------------------------------------------------------
+
+init(_) -> 
+    process_flag(trap_exit, true),
+	check(join),
+	{ok, ok}.
+
+
+%%-------------------------------------------------------------------------
+%% @spec (Reason, State) -> any
+%% @doc  Callback executed on server shutdown. It is only invoked if
+%%       'process_flag(trap_exit, true)' is set by the server process.
+%%       The return value is ignored.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+terminate(_Reason,_State) -> remove().
+
+
+%%-------------------------------------------------------------------------
+%% @spec () -> ok | {error,Reason::atom()}
+%% @doc  create imap_resp mnesia table
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
 create() -> 
 	mnesia:create_table(imap_resp,[{ram_copies,[node()]},{attributes,record_info(fields, imap_resp)},{type,bag}]),
 	mnesia:add_table_index(imap_resp,mailbox),
 	mnesia:add_table_index(imap_resp,timestamp),
 	ok.
-
+%%-------------------------------------------------------------------------
+%% @spec () -> ok | {error,Reason::atom()}
+%% @doc  Join existing imap_resp mnesia table
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
 join() -> mnesia:add_table_copy(imap_resp,node(),ram_copies).
-
-exit() -> 
+%%-------------------------------------------------------------------------
+%% @spec () -> ok | {error,Reason::atom()}
+%% @doc  Remove node from mnesia table list
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+remove() -> 
 	case catch mnesia:table_info(imap_resp,ram_copies) of
 		{'EXIT',_Reason} -> {error,table_not_found};
-		[Node] when Node == node() -> mnesia:delete_table(imap_resp);
+		[Node] when Node == node() -> 
+			mnesia:delete_table(imap_resp),
+			ok;
 		NodeList -> 
 			case lists:member(node(),NodeList) of
-				true -> mnesia:del_table_copy(imap_resp,node());
+				true -> 
+					mnesia:del_table_copy(imap_resp,node()),
+					ok;
 				false -> ok
 			end
 	end.
 
-
+%%-------------------------------------------------------------------------
+%% @spec () -> ok | {error,Reason::atom()}
+%% @doc  Checks to see if mnesia is started and imap_resp table is active.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
 check() -> 
 	case lists:keysearch(mnesia,1,application:loaded_applications()) of
 		{value,_} -> ok;		
@@ -98,12 +188,21 @@ check() ->
 		{'EXIT',_Reason} -> {error,table_not_found}
 	end.
 
+%%-------------------------------------------------------------------------
+%% @spec (Type::atom()) -> ok | {error,Reason::atom()}
+%% @doc  If Type=['join'|'create'] node will run check/0 then init 
+%%       imap_resp table. If Type is anything else only check/0 is run.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
 check(join) ->
 	case check() of
 		ok -> ok;
 		{error,table_not_found} -> create();
 		{error,local_node_not_in_node_list} -> join()
-	end.
+	end;
+check(create) -> check(join);
+check(_) -> check().
 	
 
 

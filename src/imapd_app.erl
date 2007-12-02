@@ -71,21 +71,29 @@ init([Port, Module]) ->
     {ok,
         {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
             [
-              % TCP Listener
-              {   imapd_sup,                          % Id       = internal id
-                  {imapd_listener,start_link,[Port,Module]}, % StartFun = {M, F, A}
-                  permanent,                               % Restart  = permanent | transient | temporary
-                  2000,                                    % Shutdown = brutal_kill | int() >= 0 | infinity
-                  worker,                                  % Type     = worker | supervisor
-                  [tcp_listener]                           % Modules  = [Module] | dynamic
+              % IMAP TCP Listener
+              {   imapd_sup,
+                  {imapd_listener,start_link,[Port,Module]},
+                  permanent,
+                  2000,
+                  worker,
+                  [imapd_listener]
+              },
+              % IMAP Response Server
+              {   imapd_resp,
+                  {imapd_resp,start_link,[]},
+                  permanent,
+                  2000,
+                  worker,
+                  [imapd_resp]
               },
               % Client instance supervisor
               {   imapd_client_sup,
                   {supervisor,start_link,[{local, imapd_client_sup}, ?MODULE, [Module]]},
-                  permanent,                               % Restart  = permanent | transient | temporary
-                  infinity,                                % Shutdown = brutal_kill | int() >= 0 | infinity
-                  supervisor,                              % Type     = worker | supervisor
-                  []                                       % Modules  = [Module] | dynamic
+                  permanent,
+                  infinity,
+                  supervisor,
+                  []
               }
             ]
         }
@@ -96,12 +104,12 @@ init([Module]) ->
         {_SupFlags = {simple_one_for_one, ?MAX_RESTART, ?MAX_TIME},
             [
               % TCP Client
-              {   undefined,                               % Id       = internal id
-                  {Module,start_link,[]},                  % StartFun = {M, F, A}
-                  temporary,                               % Restart  = permanent | transient | temporary
-                  2000,                                    % Shutdown = brutal_kill | int() >= 0 | infinity
-                  worker,                                  % Type     = worker | supervisor
-                  []                                       % Modules  = [Module] | dynamic
+              {   undefined,
+                  {Module,start_link,[]},
+                  temporary,
+                  2000,
+                  worker,
+                  []
               }
             ]
         }
