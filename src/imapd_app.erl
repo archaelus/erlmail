@@ -87,6 +87,14 @@ init([Port, Module]) ->
                   worker,
                   [imapd_resp]
               },
+              % Mesage Store Server - NEED TO RELOCATE THIS
+              {   erlmail_store,
+                  {erlmail_store,start_link,[]},
+                  permanent,
+                  2000,
+                  worker,
+                  [erlmail_store]
+              },
               % Client instance supervisor
               {   imapd_client_sup,
                   {supervisor,start_link,[{local, imapd_client_sup}, ?MODULE, [Module]]},

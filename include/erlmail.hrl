@@ -36,10 +36,20 @@
 	}).
 
 -record(mailbox_store,{
-	name       = [], % Tuple {MailBoxName,USerName,DomainName}
+	name       = [], % Tuple {MailBoxName,UserName,DomainName}
 	subscribed = false,
 	uidnext     = 1,
 	uidvalidity = 0,
 	options    = [],
 	messages   = []
 	}).
+
+-record(message_store,{
+	client  = [], % PID for FSM of the client
+	server  = [], % node name of the server that has the mailbox open
+	mailbox = [], % name of the mailbox
+	state   = []  % current state of the mailbox; [open|active|closed]
+	}).
+
+
+

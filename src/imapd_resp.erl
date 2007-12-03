@@ -37,6 +37,11 @@
 -author('sjackson@simpleenigma.com').
 -include("../include/imap.hrl").
 -include("../include/erlmail.hrl").
+-define(MNESIA_TABLE_NAME,imap_resp).
+-define(MNESIA_TABLE_RECORD,imap_resp).
+-define(MNESIA_EXTRA_KEYS,[mailbox,timestamp]).
+-define(MNESIA_TABLE_TYPE,bag).
+
 
 -behaviour(gen_server).
 
@@ -96,7 +101,16 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 
-
+%%-------------------------------------------------------------------------
+%% @spec (Msg, State) ->{noreply, State}          |
+%%                      {noreply, State, Timeout} |
+%%                      {stop, Reason, State}
+%% @doc Callback for messages sent directly to server's mailbox.
+%%      If `{stop, ...}' tuple is returned, the server is stopped and
+%%      `terminate/2' is called.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
 handle_info(_,_) -> ok.
 
 
@@ -135,9 +149,10 @@ terminate(_Reason,_State) -> remove().
 %% @private
 %%-------------------------------------------------------------------------
 create() -> 
-	mnesia:create_table(imap_resp,[{ram_copies,[node()]},{attributes,record_info(fields, imap_resp)},{type,bag}]),
-	mnesia:add_table_index(imap_resp,mailbox),
-	mnesia:add_table_index(imap_resp,timestamp),
+	mnesia:create_table(?MNESIA_TABLE_NAME,[{ram_copies,[node()]},{attributes,record_info(fields, ?MNESIA_TABLE_RECORD)},{type,?MNESIA_TABLE_TYPE}]),
+	lists:map(fun(Key) -> 
+		mnesia:add_table_index(?MNESIA_TABLE_NAME,Key)
+		end,?MNESIA_EXTRA_KEYS),
 	ok.
 %%-------------------------------------------------------------------------
 %% @spec () -> ok | {error,Reason::atom()}
@@ -145,7 +160,7 @@ create() ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-join() -> mnesia:add_table_copy(imap_resp,node(),ram_copies).
+join() -> mnesia:add_table_copy(?MNESIA_TABLE_NAME,node(),ram_copies).
 %%-------------------------------------------------------------------------
 %% @spec () -> ok | {error,Reason::atom()}
 %% @doc  Remove node from mnesia table list
@@ -153,15 +168,15 @@ join() -> mnesia:add_table_copy(imap_resp,node(),ram_copies).
 %% @private
 %%-------------------------------------------------------------------------
 remove() -> 
-	case catch mnesia:table_info(imap_resp,ram_copies) of
+	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
 		{'EXIT',_Reason} -> {error,table_not_found};
 		[Node] when Node == node() -> 
-			mnesia:delete_table(imap_resp),
+			mnesia:delete_table(?MNESIA_TABLE_NAME),
 			ok;
 		NodeList -> 
 			case lists:member(node(),NodeList) of
 				true -> 
-					mnesia:del_table_copy(imap_resp,node()),
+					mnesia:del_table_copy(?MNESIA_TABLE_NAME,node()),
 					ok;
 				false -> ok
 			end
@@ -178,7 +193,7 @@ check() ->
 		{value,_} -> ok;		
 		_ -> mnesia:start()
 	end,
-	case catch mnesia:table_info(imap_resp,ram_copies) of
+	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
 		[] -> {error,no_ram_copies};
 		NodeList when is_list(NodeList) -> 
 			case lists:member(node(),NodeList) of
