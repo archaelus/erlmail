@@ -19,6 +19,10 @@
 <h2><a name="description">Description</a></h2>      IMAP server response processing
 <h2><a name="index">Function Index</a></h2>
 <table width="100%" border="1"><tr><td valign="top"><a href="#init-1">init/1</a></td><td>Called by gen_server framework at process startup.</td></tr>
+<tr><td valign="top"><a href="#insert-1">insert/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#resp_list-1">resp_list/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#respond-3">respond/3</a></td><td/></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td/></tr>
 <tr><td valign="top"><a href="#stop-0">stop/0</a></td><td/></tr>
 </table>
@@ -29,6 +33,22 @@
 <p><tt>init(Unused::term()) -&gt; {ok, State} | {ok, State, Timeout} | ignore | {stop, Reason}</tt></p>
 <p>Called by gen_server framework at process startup.
        Create listening socket.</p>
+
+<h3><a name="insert-1">insert/1</a></h3>
+<tt>insert(Resp) -&gt; term()
+</tt>
+
+<h3><a name="resp_list-1">resp_list/1</a></h3>
+<tt>resp_list(Tag) -&gt; term()
+</tt>
+
+<h3><a name="respond-3">respond/3</a></h3>
+<tt>respond(RespList, Tag, State) -&gt; term()
+</tt>
+
+<h3><a name="send-2">send/2</a></h3>
+<tt>send(Tag, State) -&gt; term()
+</tt>
 
 <h3><a name="start_link-0">start_link/0</a></h3>
 <tt>start_link() -&gt; term()

@@ -20,7 +20,6 @@
 	user       = [],
 	mailbox    = [],
 	mailbox_rw = false,
-	responses  = [],
 	line       = [],
 	buff       = <<>>
 	}).

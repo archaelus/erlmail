@@ -53,6 +53,7 @@
          code_change/3]).
 % Mnesia control functions
 -export([create/0,join/0,remove/0,check/0,check/1]).
+-export([respond/3,send/2,insert/1,resp_list/1]).
 
 
 
@@ -60,6 +61,52 @@
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 stop() -> gen_server:cast(?MODULE,stop).
+
+respond(RespList,Tag,State) ->
+	insert(RespList),
+	send(Tag,State).
+
+
+send(Tag,State) -> 
+	RespList = resp_list(Tag),
+	imapd_util:send(RespList,State).
+
+insert(Resp) when is_record(Resp,imap_resp) -> 
+	Fun = fun() ->
+		mnesia:write(Resp#imap_resp{pid = self(), timestamp = now()})
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{atomic,ok} -> ok;
+		{error,Reason} -> {error,Reason};
+		{aborted,Reason} -> {error,Reason}
+	end;
+insert(List) when is_list(List) ->
+	lists:map(fun(Resp) -> 
+		insert(Resp)
+		end, lists:flatten(List)).
+
+
+resp_list(Tag) ->
+	Fun = fun() ->
+		Untagged =  mnesia:match_object(#imap_resp{tag='*',pid=self(), _ = '_'}),
+		Tagged = mnesia:match_object(#imap_resp{tag=Tag,pid=self(), _ = '_'}),
+		RespList = lists:append(Untagged,Tagged),
+		lists:map(fun(Resp) -> 
+			mnesia:delete_object(Resp)
+			end, RespList),
+		RespList
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{atomic,List} -> List;
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason}
+	end.
+
+
+
+
+
+
 
 
 %%-------------------------------------------------------------------------

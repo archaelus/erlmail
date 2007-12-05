@@ -48,7 +48,7 @@
 %%-------------------------------------------------------------------------
 command(#imapd_fsm{line = Line} = State) -> 
 	Command = imapd_util:parse(Line,State),
-	io:format("Command: ~p~n",[Command]),
+	io:format("Command: ~p~nPID: ~p~n",[Command,self()]),
 	command(Command,State).
 
 
@@ -62,13 +62,13 @@ command(#imapd_fsm{line = Line} = State) ->
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = capability = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	Capability = imapd_ext:capability(),
-	imapd_util:send(#imap_resp{tag = '*', cmd = capability, info = Capability}, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}, State),
+	imapd_resp:respond([#imap_resp{tag = '*', cmd = capability, info = imapd_ext:capability()},
+					  #imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = capability = Command, data = Data}, State) -> 
 	imapd_util:out(Command, Data, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: Unexpected additional characters at the end of the command"}, State),
+	imapd_resp:insert(#imap_resp{tag = Tag, status = bad}),
+	imapd_resp:send(Tag,State),
 	State;
 
 %%%-------------------------
@@ -76,12 +76,11 @@ command(#imap_cmd{tag = Tag, cmd = capability = Command, data = Data}, State) ->
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = noop = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(State#imapd_fsm.responses,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
-	State#imapd_fsm{responses = []};
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
+	State;
 command(#imap_cmd{tag = Tag, cmd = noop = Command, data = Data}, State) -> 
 	imapd_util:out(Command,Data,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: Unexpected additional characters at the end of the command"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -89,13 +88,13 @@ command(#imap_cmd{tag = Tag, cmd = noop = Command, data = Data}, State) ->
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = logout = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = '*', status = bye, info = "ErlMail terminating connection"}, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}, State),
+	imapd_resp:respond([#imap_resp{tag = '*', status = bye, info = "ErlMail terminating connection"},
+						#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	gen_tcp:close(State#imapd_fsm.socket),
 	State;
 command(#imap_cmd{tag = Tag, cmd = logout = Command, data = Data}, State) -> 
 	imapd_util:out(Command, Data, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: Unexpected additional characters at the end of the command"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -117,33 +116,31 @@ command(#imap_cmd{tag = Tag, cmd = logout = Command, data = Data}, State) ->
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = login = Command, data = []},  State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no login data"}, State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = login = Command, data = {UserName,Password}}, 
 	    #imapd_fsm{state = not_authenticated, options = Options} = State) -> 
-	?D({UserName,Password}),
 	case lists:keysearch(logindisabled, 1, Options) of
 		{value, {logindisabled,true}} ->
-			imapd_util:send(#imap_resp{tag = Tag, status = no, info = "failure: command disabled"},State),
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 			State;
 		_ ->
 			imapd_util:out(Command,UserName,State),
 			Store = gen_store:lookup(user,State),
 			User = Store:select(erlmail_util:split_email(UserName)),
-			?D(User),
 			case User of
 				#user{password = Password} = User when Password /= [] -> 
-					imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+					imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 					State#imapd_fsm{state = authenticated, user = User};
 				_ -> 
-					imapd_util:send(#imap_resp{tag = Tag, status = no, info = "failure: unknown user name or bad password"},State),
+					imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 					State
 			end
 	end;
 command(#imap_cmd{tag = Tag, cmd = login = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= selected; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Already logged in"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -151,12 +148,12 @@ command(#imap_cmd{tag = Tag, cmd = login = Command},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = select = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox data"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = select = Command}, 
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -165,20 +162,24 @@ command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 	MailBoxStore = Store:select({MailBoxName, User#user.name}),
 	case MailBoxStore of
 		MailBoxStore when is_record(MailBoxStore, mailbox_store) ->
+			% @todo: open mailbox in mailbox store or mark as active for this client. Set RW = true
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
-			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},State),
-			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},State),
 			% @todo Clean up Flag processing - figure out where to store data
-			imapd_util:send(#imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},State),
 			% @todo Clean up PermanentFlag processing - figure out where to store data
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},State),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"},State),
+			RespList = 
+				[#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},
+				 #imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},
+				 #imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},
+				 #imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},
+				 #imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
+				 #imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
+				 #imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
+				 #imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"}
+				],
+			imapd_resp:respond(RespList,Tag,State),
 			State#imapd_fsm{state = selected, mailbox = MailBoxStore,mailbox_rw = true};
 		_ ->
-			imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "failure: no such mailbox"},State),
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 			State#imapd_fsm{state = authenticated, mailbox = [], mailbox_rw = false}
 	end;
 %%%-------------------------
@@ -187,12 +188,12 @@ command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 
 command(#imap_cmd{tag = Tag, cmd = examine = Command, data = []}, State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox data"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = examine = Command}, 
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command, State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -202,19 +203,22 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 	case MailBoxStore of
 		MailBoxStore when is_record(MailBoxStore, mailbox_store) ->
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
-			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},State),
-			imapd_util:send(#imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},State),
 			% @todo Clean up Flag processing - figure out where to store data
-			imapd_util:send(#imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},State),
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},State),
 			% @todo Clean up PermanentFlag processing - figure out where to store data
-			imapd_util:send(#imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},State),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, code = 'read-only', cmd = Command, info = "Completed"},State),
-			State#imapd_fsm{state = selected, mailbox = MailBoxStore};
+			RespList = 
+				[#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},
+				 #imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},
+				 #imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},
+				 #imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},
+				 #imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
+				 #imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
+				 #imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
+				 #imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"}
+				],
+			imapd_resp:respond(RespList,Tag,State),
+			State#imapd_fsm{state = selected, mailbox = MailBoxStore,mailbox_rw = false};
 		_ ->
-			imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "failure: no such mailbox"},State),
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 			State#imapd_fsm{state = authenticated, mailbox = [], mailbox_rw = false}
 	end;
 %%%-------------------------
@@ -222,12 +226,12 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = create = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox name"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = create = Command},
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -241,10 +245,10 @@ command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
 			% @todo CREATE check previosuly deleted forlder info for MAX UID
 			{UserName,DomainName} = User#user.name,
 			Store:insert(#mailbox_store{name={Data,UserName,DomainName}}),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
-			 imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: Mailbox Exists"},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: cannot create mailbox"},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;
 %%%-------------------------
@@ -252,21 +256,21 @@ command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = delete = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox data"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = delete = Command},
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
-		[] ->  imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: Mailbox Does Not Exists"},State);
+		[] ->  imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		#mailbox_store{name = {"INBOX",_,_}} -> 
-			 imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: Cannot delete INBOX"},State);
+			 imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
 			{UserName,DomainName} = User#user.name,
 			% @todo DELETE messages and cleanup
@@ -275,8 +279,8 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 			% @todo DELETE maintain list of Max UID for deleted folders incase of recreation
 			?D({delete,MailBoxName,UserName,DomainName}),
 			Store:delete(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: cannot create mailbox"},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;
 
@@ -285,16 +289,16 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {[],[]}}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, cmd = Command, info = "Protocol Error: no mailbox names"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {_,[]}}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, cmd = Command, info = "Protocol Error: no destination mailbox"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = rename = Command},
         #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -303,9 +307,9 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 	SrcMB = Store:select({string:strip(Src),User#user.name}),
 	DstMB = Store:select({string:strip(Dst),User#user.name}),
 	case {SrcMB,DstMB} of
-		{[],_} -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		{[],_} -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		{_,DstMB} when is_record(DstMB,mailbox_store) -> 
-			imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		{SrcMB,[]} ->
 			% @todo RENAME any sub folders
 			% @todo RENAME create any parent folders
@@ -315,8 +319,8 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 			NewMB = SrcMB#mailbox_store{name = {Dst,UserName,DomainName}},
 			Store:insert(NewMB),
 			Store:delete(SrcMB),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = no, cmd = Command},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+		_ -> 	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;
 
@@ -325,24 +329,24 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = subscribe = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox name"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = subscribe = Command},
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = subscribe = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
-		[] -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) ->
 			NewMailBox = MailBox#mailbox_store{subscribed = true},
 			Store:update(NewMailBox),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = no},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;
 %%%-------------------------
@@ -350,24 +354,24 @@ command(#imap_cmd{tag = Tag, cmd = subscribe = Command, data = MailBoxName},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox data"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command},
 	    #imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no, info = "Failure: not authenticated"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({MailBoxName,User#user.name}) of
-		[] ->imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) ->
 			NewMailBox = MailBox#mailbox_store{subscribed = false},
 			Store:update(NewMailBox),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = no},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;
 %%%-------------------------
@@ -375,12 +379,12 @@ command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = list = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = list = Command},
 		#imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = list = Command, data = {_Reference,MailBoxName}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -392,14 +396,14 @@ command(#imap_cmd{tag = Tag, cmd = list = Command, data = {_Reference,MailBoxNam
 	case Store:mlist(MailBoxName,User#user.name,false) of
 		List when is_list(List) -> 
 %			?D(List),
-			lists:map(fun(Name) -> 
+			RespList = lists:map(fun(Name) -> 
 				Info = {Command,Heirachy,Name},
 				Data = {Command,[]},
-				imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Data, info = Info},State)
+				#imap_resp{tag = '*', cmd = Command, data = Data, info = Info}
 				end,List),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		undefined -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = bad},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State);
+		undefined -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = bado}],Tag,State)
 	end,
 	State;
 
@@ -410,12 +414,12 @@ command(#imap_cmd{tag = Tag, cmd = list = Command, data = {_Reference,MailBoxNam
 
 command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = lsub = Command},
 		#imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
@@ -425,14 +429,14 @@ command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName
 	Heirachy = imapd_util:heirachy_char(),
 	case Store:mlist(MailBoxName,User#user.name,true) of
 		List when is_list(List) -> 
-			lists:map(fun(Name) -> 
+			RespList = lists:map(fun(Name) -> 
 				Info = {Command,Heirachy,Name},
 				Data = {Command,[]},
-				imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Data, info = Info},State)
+				#imap_resp{tag = '*', cmd = Command, data = Data, info = Info}
 				end,List),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		undefined -> imapd_util:send(#imap_resp{tag = Tag, status = no},State);
-		_ -> imapd_util:send(#imap_resp{tag = Tag, status = bad},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State);
+		undefined -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State)
 	end,
 	State;
 
@@ -441,33 +445,28 @@ command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = status = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad, info = "Protocol Error: no mailbox data"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = status = Command},
 		#imapd_fsm{state = not_authenticated} = State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = no},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
 	Store = gen_store:lookup(mailbox_store, State),
 	case Store:select({string:strip(MailBoxName),User#user.name}) of
-		[] ->
-			imapd_util:send(#imap_resp{tag = Tag, status = no},State);
+		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) -> 
 			StatusFlags = imapd_util:status_flags(Flags),
 			MailBoxInfo = imapd_util:mailbox_info(MailBox,StatusFlags),
 			StatusInfo  = imapd_util:status_info(MailBoxInfo,StatusFlags),
-			% @todo Process each flag and build data to return
 			Status = {status,MailBoxName,StatusInfo},
-			imapd_util:send(#imap_resp{tag = '*', cmd = Command, data = Status},State),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State);
-		_ -> 
-			imapd_util:send(#imap_resp{tag = Tag, status = no},State)
-	
+			% @todo Process each flag and build data to return
+			imapd_resp:respond([#imap_resp{tag = '*', cmd = Command, data = Status},#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
-
 	State;
 
 %%%-------------------------
@@ -483,7 +482,7 @@ command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}}
 command(#imap_cmd{tag = Tag, cmd = check = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = check = Command, data = []},#imapd_fsm{state = selected} = State) -> 
 	imapd_util:out(Command,State),
@@ -492,11 +491,11 @@ command(#imap_cmd{tag = Tag, cmd = check = Command, data = []},#imapd_fsm{state 
 	User:check(user),
 	Message:check(message),
 	MailBox:check(mailbox_store),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = check = Command}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -505,7 +504,7 @@ command(#imap_cmd{tag = Tag, cmd = check = Command}, State) ->
 command(#imap_cmd{tag = Tag, cmd = close = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
 		#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
@@ -518,11 +517,11 @@ command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
 			imapd_util:expunge(MailBox);
 		false -> ok
 	end,
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	State#imapd_fsm{mailbox = [], mailbox_rw = false, state = authenticated};
 command(#imap_cmd{tag = Tag, cmd = close = Command}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -531,21 +530,20 @@ command(#imap_cmd{tag = Tag, cmd = close = Command}, State) ->
 command(#imap_cmd{tag = Tag, cmd = expunge = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = expunge = Command, data = []}, #imapd_fsm{mailbox = Selected} = State) -> 
 	imapd_util:out(Command,State),
 	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
 	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
-	{NewMailBox,_RespList} = imapd_util:expunge(MailBox),
+	{NewMailBox,RespList} = imapd_util:expunge(MailBox),
 	Store:update(NewMailBox),
-	% send response list
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox = NewMailBox};
 command(#imap_cmd{tag = Tag, cmd = expunge = Command}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 
 %%%-------------------------
@@ -560,18 +558,18 @@ command(#imap_cmd{tag = Tag, cmd = expunge = Command}, State) ->
 command(#imap_cmd{tag = Tag, cmd = fetch = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -> 
 	imapd_util:out(Command,State),
 	
 	?D({Seq,Data}),
 	
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"}],Tag,State),
 	State;
 
 % @todo FETCH impliment command
@@ -582,11 +580,11 @@ command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -
 command(#imap_cmd{tag = Tag, cmd = store = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
@@ -594,8 +592,7 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 	Current = Store:select(Selected),
 	Messages = imapd_util:seq_message_names(Seq,Current),
 	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
-	imapd_util:send(RespList,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox = Current};
 
 %%%-------------------------
@@ -604,11 +601,11 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#
 command(#imap_cmd{tag = Tag, cmd = copy = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = copy = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
 	imapd_util:out(Command,{Seq,MailBoxName},State),
@@ -616,12 +613,11 @@ command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#im
 	Current = Store:select(Selected),
 	Dest = Store:select({MailBoxName,User#user.name}),
 	case Dest of
-		[] -> 
-			imapd_util:send(#imap_resp{tag = Tag, status = no, code = trycreate},State);
+		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		Dest when is_record(Dest,mailbox_store) ->
 			Messages = imapd_util:seq_message_names(Seq,Current),
 			imapd_util:copy(Dest,Messages,State),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State)
 	end,
 	State#imapd_fsm{mailbox = Current};
 
@@ -631,11 +627,11 @@ command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#im
 command(#imap_cmd{tag = Tag, cmd = uid = Command},
 		#imapd_fsm{state = FSMState} = State) when FSMState =:= not_authenticated; FSMState =:= authenticated -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) -> 
 	imapd_util:out(Command,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
@@ -648,9 +644,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	Messages = imapd_util:uidseq_message_names(Seq,MailBox),
 	?D(Messages),
 	RespList = imapd_fetch:fetch(Messages,Items,State),
-%	?D(RespList),
-	imapd_util:send(RespList,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox=MailBox};
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMailBox}},
 	#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
@@ -660,13 +654,12 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMail
 	Dest = Store:select({DestMailBox,User#user.name}),
 	case Dest of
 		[] -> 
-			imapd_util:send(#imap_resp{tag = Tag, status = no, code = trycreate},State);
+			imapd_resp:respond([#imap_resp{tag = Tag, status = no, code = trycreate}],Tag,State);
 		Dest when is_record(Dest,mailbox_store) ->
 			Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
 			imapd_util:copy(Dest,Messages,State),
-			imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State)
+			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State)
 	end,
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
 	State#imapd_fsm{mailbox=Current};
 
 
@@ -676,8 +669,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action,
 	Current = gen_store:select(Selected,State),
 	Messages = imapd_util:uidseq_message_names(UIDSeq,Current),
 	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
-	imapd_util:send(RespList,State),
-	imapd_util:send(#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"},State),
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox=Current};
 
 
@@ -693,9 +685,11 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {store, UIDSeq, Action,
 %%%-------------------------
 command(#imap_cmd{tag = Tag, cmd = Command, data = Data} = Cmd, State) ->
 	case imapd_ext:check(Command) of
-		{ok,Module,Function} ->  Module:Function(Cmd, State);
+		{ok,Module,Function} ->  
+			RespList = Module:Function(Cmd, State),
+			imapd_resp:respond(RespList,Tag,State);
 		{error,_Reason} ->
 			imapd_util:out(Command,Data,State),
-			imapd_util:send(#imap_resp{tag = Tag, status = bad},State),
+			imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 			State
 	end.

@@ -50,9 +50,18 @@
 
 
 
+t() -> 
+	Tag = 'test',
+	R = [#imap_resp{tag='*'},#imap_resp{tag=Tag}],
+	imapd_resp:insert(R),
+	imapd_resp:resp_list(Tag).
+
+
+
 c() -> c({10,1,1,175}).
 c(IP) -> 
 	{ok,Fsm} = imapc:connect(IP),
+	cmd(Fsm,capability),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
 	cmd(Fsm,select,"Test"),
 %	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[deleted]}),
@@ -60,7 +69,7 @@ c(IP) ->
 %	cmd(Fsm,copy,{[35],"Test"}),
 %	cmd(Fsm,uid,{fetch,{"1,2,3,4",[envelope]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
-	cmd(Fsm,fetch,{[1],['rfc822']}),
+%	cmd(Fsm,fetch,{[1],['rfc822']}),
 
 
 %	cmd(Fsm,close),

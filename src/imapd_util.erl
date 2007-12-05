@@ -590,7 +590,8 @@ send([],_State) -> ok;
 send(Resp,State) when is_record(Resp,imap_resp)  -> send(response(Resp),State);
 send([#imap_resp{}|_Rest] = RespList,State) when is_list(RespList) ->
 	Msg = lists:flatten(lists:map(fun(R) -> 
-		M = imapd_util:response(R), 
+		M = imapd_util:response(R#imap_resp{pid= [], timestamp = []}), 
+		?D(M),
 		[M,13,10] 
 		end,RespList)),
 	send(Msg,State);
