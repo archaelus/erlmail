@@ -37,10 +37,6 @@
 -author('sjackson@simpleenigma.com').
 -include("../include/imap.hrl").
 -include("../include/erlmail.hrl").
--define(MNESIA_TABLE_NAME,message_store).
--define(MNESIA_TABLE_RECORD,message_store).
--define(MNESIA_EXTRA_KEYS,[server,mailbox]).
--define(MNESIA_TABLE_TYPE,set).
 
 -behaviour(gen_server).
 
@@ -49,11 +45,103 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
-% Mnesia control functions
--export([create/0,join/0,remove/0,check/0,check/1]).
+
+%% API
+-export([select/1]).
+
+%% temp export; most likley private
+-export([open/1,close/1,check/1]).
+-export([status/0,status/1]).
 
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+
+%%% API
+
+
+select({UserName,DomainName}) -> gen_server:call(erlmail_store,{select,{UserName,DomainName}},10000).
+	
+
+
+
+
+%%%% Private Functions
+status() -> ok.
+status({MbxName,UserName,DomainName}) ->
+	?D({MbxName,UserName,DomainName}), 
+	ok.
+
+
+
+open(MailBoxName) ->
+	case check(MailBoxName) of
+		true   -> create(MailBoxName);
+		prmote -> promote(MailBoxName);
+		false  -> create(MailBoxName,open)
+	end.
+
+close(MailBoxName) -> drop(MailBoxName).
+
+
+check(MailBoxName) -> 
+	Fun = fun() ->
+		Open = mnesia:match_object(#message_store{mailbox = MailBoxName, state = open, _ = '_'}),
+		All = mnesia:match_object(#message_store{mailbox = MailBoxName, _ = '_'}),
+		[length(Open),length(All)]
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{atomic,[0,0]}   -> false;
+		{atomic,[0,_]}   -> promote;
+		{atomic,[1,_]}   -> true;
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason}   -> {error,Reason}
+	end.
+	
+
+promote(_MailBoxName) -> ok.
+
+create(MailBoxName) -> create(MailBoxName,active).
+create(MailBoxName,State) ->
+	Fun = fun() ->
+		mnesia:write(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = State}) 
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason};
+		{atomic,ok} -> {ok,State}
+	end.
+
+drop(MailBoxName) ->
+	Fun = fun() ->
+		case mnesia:match_object(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = '_'}) of
+			[#message_store{} = Store] -> mnesia:delete_object(Store) ;
+			_ -> error
+		end
+		
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason};
+		{atomic,error} -> {error,message_store_error};
+		{atomic,ok} -> ok
+	end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec (OldVsn, State, Extra) -> {ok, NewState}
@@ -74,7 +162,9 @@ code_change(_,_,_) -> ok.
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-handle_call(_,_,_) -> ok.
+handle_call(Request,From,State) -> 
+	?D({Request,From,State}),
+	{noreply,State}.
 %%-------------------------------------------------------------------------
 %% @spec (Msg, State) ->{noreply, State}          |
 %%                      {noreply, State, Timeout} |
@@ -97,14 +187,22 @@ handle_cast(_,_) -> ok.
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
+handle_info({open,MailBoxName},State) ->
+	?D({open,MailBoxName}),
+	{noreply,State};
+handle_info(test,State) ->
+	io:format("Test Message Received~n"),
+	{noreply,State};
+handle_info(stop,State) ->
+	{stop,normal,State};
 handle_info(_Info,State) -> 
 	?D({_Info,State}),
 	{noreply,State}.
 %%----------------------------------------------------------------------
 %% @spec (Unused::term()) -> {ok, State}           |
-%%                            {ok, State, Timeout}  |
-%%                            ignore                |
-%%                            {stop, Reason}
+%%                           {ok, State, Timeout}  |
+%%                           ignore                |
+%%                           {stop, Reason}
 %%
 %% @doc Called by gen_server framework at process startup.
 %%      Create listening socket.
@@ -113,8 +211,14 @@ handle_info(_Info,State) ->
 
 init(_) -> 
     process_flag(trap_exit, true),
-	check(join),
-	{ok, ok}.
+	erlmail_util:check(message_store,message_store,set,[server,mailbox]),
+	System = mnesia_store,
+	Domain  = erlmail_conf:lookup_atom(store_type_domain),
+	User    = erlmail_conf:lookup_atom(store_type_user),
+	Message = erlmail_conf:lookup_atom(store_type_message),
+	Mailbox = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	State = #erlmail_store{system = System, domain = Domain, user = User, message = Message, mailbox = Mailbox},
+	{ok, State}.
 %%-------------------------------------------------------------------------
 %% @spec (Reason, State) -> any
 %% @doc  Callback executed on server shutdown. It is only invoked if
@@ -124,85 +228,9 @@ init(_) ->
 %% @private
 %%-------------------------------------------------------------------------
 terminate(_Reason,_State) -> 
-	remove(),
+	erlmail_util:remove(message_store),
 	ok.
 
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  create imap_resp mnesia table
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-create() -> 
-	mnesia:create_table(?MNESIA_TABLE_NAME,[{ram_copies,[node()]},{attributes,record_info(fields, ?MNESIA_TABLE_RECORD)},{type,?MNESIA_TABLE_TYPE}]),
-	lists:map(fun(Key) -> 
-		mnesia:add_table_index(?MNESIA_TABLE_NAME,Key)
-		end,?MNESIA_EXTRA_KEYS),
-	ok.
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Join existing imap_resp mnesia table
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-join() -> mnesia:add_table_copy(?MNESIA_TABLE_NAME,node(),ram_copies).
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Remove node from mnesia table list
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-remove() -> 
-	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
-		{'EXIT',_Reason} -> {error,table_not_found};
-		[Node] when Node == node() -> 
-			mnesia:delete_table(?MNESIA_TABLE_NAME),
-			ok;
-		NodeList -> 
-			case lists:member(node(),NodeList) of
-				true -> 
-					mnesia:del_table_copy(?MNESIA_TABLE_NAME,node()),
-					ok;
-				false -> ok
-			end
-	end.
-
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Checks to see if mnesia is started and imap_resp table is active.
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-check() -> 
-	case lists:keysearch(mnesia,1,application:loaded_applications()) of
-		{value,_} -> ok;		
-		_ -> mnesia:start()
-	end,
-	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
-		[] -> {error,no_ram_copies};
-		NodeList when is_list(NodeList) -> 
-			case lists:member(node(),NodeList) of
-				true -> ok;
-				false -> {error,local_node_not_in_node_list}
-			end;
-		{'EXIT',_Reason} -> {error,table_not_found}
-	end.
-
-%%-------------------------------------------------------------------------
-%% @spec (Type::atom()) -> ok | {error,Reason::atom()}
-%% @doc  If Type=['join'|'create'] node will run check/0 then init 
-%%       imap_resp table. If Type is anything else only check/0 is run.
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-check(join) ->
-	case check() of
-		ok -> ok;
-		{error,table_not_found} -> create();
-		{error,local_node_not_in_node_list} -> join()
-	end;
-check(create) -> check(join);
-check(_) -> check().
 
 
 

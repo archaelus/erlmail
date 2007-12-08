@@ -51,5 +51,10 @@
 	state   = []  % current state of the mailbox; [open|active|closed]
 	}).
 
-
-
+-record(erlmail_store,{
+	system  = mnesia_store, 
+	domain  = mnesia_store, 
+	user    = mnesia_store, 
+	message = mnesia_store, 
+	mailbox = mnesia_store
+	}).

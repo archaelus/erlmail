@@ -50,6 +50,15 @@
 
 
 
+s() ->
+	MailBoxName = {?MAILBOX,?USER,?DOMAIN},
+	erlmail_store:open(MailBoxName),
+%	erlmail_store:close(MailBoxName),
+	ok.
+
+
+
+
 t() -> 
 	Tag = 'test',
 	R = [#imap_resp{tag='*'},#imap_resp{tag=Tag}],

@@ -37,10 +37,7 @@
 -author('sjackson@simpleenigma.com').
 -include("../include/imap.hrl").
 -include("../include/erlmail.hrl").
--define(MNESIA_TABLE_NAME,imap_resp).
--define(MNESIA_TABLE_RECORD,imap_resp).
--define(MNESIA_EXTRA_KEYS,[mailbox,timestamp]).
--define(MNESIA_TABLE_TYPE,bag).
+
 
 
 -behaviour(gen_server).
@@ -51,8 +48,6 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
-% Mnesia control functions
--export([create/0,join/0,remove/0,check/0,check/1]).
 -export([respond/3,send/2,insert/1,resp_list/1]).
 
 
@@ -158,7 +153,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-handle_info(_,_) -> ok.
+handle_info(test,State) ->
+	io:format("Test Message Received~n"),
+	{noreply,State};
+handle_info(_Info,State) -> 
+	?D({_Info,State}),
+	{noreply,State}.
 
 
 %%----------------------------------------------------------------------
@@ -174,9 +174,8 @@ handle_info(_,_) -> ok.
 
 init(_) -> 
     process_flag(trap_exit, true),
-	check(join),
+	erlmail_util:check(imap_resp,imap_resp,bag,[mailbox,timestamp]),
 	{ok, ok}.
-
 
 %%-------------------------------------------------------------------------
 %% @spec (Reason, State) -> any
@@ -186,106 +185,4 @@ init(_) ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-terminate(_Reason,_State) -> remove().
-
-
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  create imap_resp mnesia table
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-create() -> 
-	mnesia:create_table(?MNESIA_TABLE_NAME,[{ram_copies,[node()]},{attributes,record_info(fields, ?MNESIA_TABLE_RECORD)},{type,?MNESIA_TABLE_TYPE}]),
-	lists:map(fun(Key) -> 
-		mnesia:add_table_index(?MNESIA_TABLE_NAME,Key)
-		end,?MNESIA_EXTRA_KEYS),
-	ok.
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Join existing imap_resp mnesia table
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-join() -> mnesia:add_table_copy(?MNESIA_TABLE_NAME,node(),ram_copies).
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Remove node from mnesia table list
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-remove() -> 
-	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
-		{'EXIT',_Reason} -> {error,table_not_found};
-		[Node] when Node == node() -> 
-			mnesia:delete_table(?MNESIA_TABLE_NAME),
-			ok;
-		NodeList -> 
-			case lists:member(node(),NodeList) of
-				true -> 
-					mnesia:del_table_copy(?MNESIA_TABLE_NAME,node()),
-					ok;
-				false -> ok
-			end
-	end.
-
-%%-------------------------------------------------------------------------
-%% @spec () -> ok | {error,Reason::atom()}
-%% @doc  Checks to see if mnesia is started and imap_resp table is active.
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-check() -> 
-	case lists:keysearch(mnesia,1,application:loaded_applications()) of
-		{value,_} -> ok;		
-		_ -> mnesia:start()
-	end,
-	case catch mnesia:table_info(?MNESIA_TABLE_NAME,ram_copies) of
-		[] -> {error,no_ram_copies};
-		NodeList when is_list(NodeList) -> 
-			case lists:member(node(),NodeList) of
-				true -> ok;
-				false -> {error,local_node_not_in_node_list}
-			end;
-		{'EXIT',_Reason} -> {error,table_not_found}
-	end.
-
-%%-------------------------------------------------------------------------
-%% @spec (Type::atom()) -> ok | {error,Reason::atom()}
-%% @doc  If Type=['join'|'create'] node will run check/0 then init 
-%%       imap_resp table. If Type is anything else only check/0 is run.
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-check(join) ->
-	case check() of
-		ok -> ok;
-		{error,table_not_found} -> create();
-		{error,local_node_not_in_node_list} -> join()
-	end;
-check(create) -> check(join);
-check(_) -> check().
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+terminate(_Reason,_State) -> erlmail_util:remove(imap_resp).
