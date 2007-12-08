@@ -4,6 +4,8 @@
           erlmail,
           erlmail_app,
           erlmail_store,
+          erlmail_store_sup,
+          erlmail_sup,
           erlmail_test,
           erlmail_util,
           gen_store,
@@ -20,6 +22,7 @@
           imapd_listener,
           imapd_resp,
           imapd_search,
+          imapd_sup,
           imapd_util,
           mime,
           mnesia_store,
@@ -29,4 +32,5 @@
           smtpd_app,
           smtpd_cmd,
           smtpd_fsm,
-          smtpd_listener]}.
+          smtpd_listener,
+          smtpd_sup]}.

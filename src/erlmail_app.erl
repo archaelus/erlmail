@@ -40,7 +40,6 @@
 
 -export([start/2,stop/1]).
 
-
 start(_Type, _Args) ->
 	erlmail_sup:start_link().
 

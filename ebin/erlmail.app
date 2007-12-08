@@ -8,6 +8,7 @@
   {applications, [kernel, stdlib, mnesia]},
   {mod, {erlmail_app, []}},
   {env, [
+  	{server_list,[smtp,imap,pop]},
   	{server_smtp_start,false},
 	{server_smtp_name,"smtp.erlsoft.net"},
   	{server_smtp_port,25},

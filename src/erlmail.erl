@@ -41,11 +41,11 @@
 
 start() -> 
 	io:format("Starting ErlMail ...~n"),
-	application:start(erlmail).
+	application:start(?MODULE).
 
 stop() ->
 	io:format("Stopping ErlMail ...~n"),
-	application:stop(erlmail).
+	application:stop(?MODULE).
 
 restart() ->
 	stop(),
@@ -55,12 +55,12 @@ restart() ->
 reload() ->
 	io:format("Reloading ErlMail Modules ...~n"),
 	reload:reload([
-		erlmail_conf,erlmail_util,erlmail_store,
-		gen_store,dets_store,mnesia_store,
-		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
+		erlmail_app,erlmail_sup,erlmail_util,erlmail_store,erlmail_store_sup,
+		gen_store,dets_store,mnesia_store,mysql_store,
+		imapd,imapd_listener,imapd_fsm,imapd_app,imap_sup,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
 		mime,
-		smtpd_app,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
+		smtpd_app,smtpd_sup,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
 		smtpc,smtpc_fsm,smtpc_util,
 		erlmail_test
 		]).

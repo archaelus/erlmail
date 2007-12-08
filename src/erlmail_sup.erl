@@ -1,11 +1,11 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       SMTPD applicaiton definition file
+%%% @doc       ErlMail Supervisor definition file
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
-%%% @since     0.0.5
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -33,30 +33,57 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(smtpd_app).
+-module(erlmail_sup).
 -author('sjackson@simpleenigma.com').
--include("../include/smtp.hrl").
 
--behaviour(application).
+-behaviour(supervisor).
 
-%% Internal API
--export([start_client/0]).
-
-%% Application and Supervisor callbacks
--export([start/2, stop/1]).
+-export([init/1]).
+-export([start_link/0,child_spec/1,children/1]).
 
 
-%% A startup function for spawning new client connection handling FSM.
-%% To be called by the TCP listener process.
-start_client() ->
-    supervisor:start_child(smtpd_sup, []).
+start_link() ->
+	supervisor:start_link({local,?MODULE},?MODULE,[]).
 
-%%----------------------------------------------------------------------
-%% Application behaviour callbacks
-%%----------------------------------------------------------------------
-start(_Type, _Args) ->
-    {ok,ListenPort} = application:get_env(erlmail,server_smtp_port),
-    supervisor:start_link({local, smtpd_sup}, smtpd_sup, [ListenPort, smtpd_fsm]).
 
-stop(_S) ->
-    ok.
+init(_Args) -> 
+	{ok,Servers} = application:get_env(erlmail,server_list),
+	RestartStrategy = one_for_one,
+	MaxR = 1,
+	MaxT = 60,
+	Children = children([erlmail_store | Servers]),
+	case supervisor:check_childspecs(Children) of
+		ok -> {ok, {{RestartStrategy,MaxR,MaxT}, Children}};
+		{error,_Reason} -> ignore
+	end.
+
+
+children(List) -> 
+	Specs = lists:map(fun(C) -> 
+		S = "server_" ++ atom_to_list(C) ++ "_start", 
+		case application:get_env(erlmail,list_to_atom(S)) of
+			{ok,true} -> child_spec(C);
+			_ -> []
+		end
+		end,List),
+	lists:flatten(Specs).
+
+
+child_spec(erlmail_store) -> {erlmail_store,{erlmail_store_sup,start_link,[]},permanent,5000,supervisor,[erlmail_store_sup]};
+child_spec(smtp)          -> {smtpd,{smtpd_sup,start_link,[]},permanent,5000,supervisor,[smtpd_sup]};
+child_spec(imap)          -> {imapd,{imapd_sup,start_link,[]},permanent,5000,supervisor,[imapd_sup]};
+child_spec(pop)           -> {popd, {popd_sup, start_link,[]},permanent,5000,supervisor,[popd_sup]};
+child_spec(_)             -> [].
+
+
+
+
+
+
+
+
+
+
+
+
+

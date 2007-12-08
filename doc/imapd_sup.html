@@ -1,40 +1,35 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title>Module smtpd_app</title>
+<title>Module imapd_sup</title>
 <link rel="stylesheet" type="text/css" href="stylesheet.css">
 </head>
 <body bgcolor="white">
 
-<h1>Module smtpd_app</h1>
-      SMTPD applicaiton definition file.
+<h1>Module imapd_sup</h1>
+      IMAP Server OTP supervisor file.
 <p>Copyright © 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.</p>
 <ul><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
 <p><b>Version:</b>   0.0.6</p>
-<p><b>Introduced in:</b>     0.0.5</p>
-<p><b>Behaviours:</b> <a href="application.html"><tt>application</tt></a>.</p>
+<p><b>Introduced in:</b>     0.0.6</p>
+<p><b>Behaviours:</b> <a href="supervisor.html"><tt>supervisor</tt></a>.</p>
 <p><b>Authors:</b> Stuart Jackson (<a href="mailto:sjackson@simpleenigma.com"><tt>sjackson@simpleenigma.com</tt></a>) [<em>web site:</em> <tt><a href="http://erlsoft.org" target="_top">http://erlsoft.org</a></tt>].</p>
 <p><b>References</b><ul><li>See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information</li><li>See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information</li></ul></p>
 
-<h2><a name="description">Description</a></h2>      SMTPD applicaiton definition file
+<h2><a name="description">Description</a></h2>      IMAP Server OTP supervisor file
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1"><tr><td valign="top"><a href="#start-2">start/2</a></td><td/></tr>
-<tr><td valign="top"><a href="#start_client-0">start_client/0</a></td><td/></tr>
-<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td/></tr>
+<table width="100%" border="1"><tr><td valign="top"><a href="#init-1">init/1</a></td><td/></tr>
+<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td/></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
 
-<h3><a name="start-2">start/2</a></h3>
-<tt>start(Type, Args) -&gt; term()
+<h3><a name="init-1">init/1</a></h3>
+<tt>init(X1) -&gt; term()
 </tt>
 
-<h3><a name="start_client-0">start_client/0</a></h3>
-<tt>start_client() -&gt; term()
-</tt>
-
-<h3><a name="stop-1">stop/1</a></h3>
-<tt>stop(S) -&gt; term()
+<h3><a name="start_link-0">start_link/0</a></h3>
+<tt>start_link() -&gt; term()
 </tt>
 </body>
 </html>

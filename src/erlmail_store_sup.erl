@@ -1,11 +1,11 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       SMTPD applicaiton definition file
+%%% @doc       ErlMail Message Store Supervisor definition file
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
-%%% @since     0.0.5
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -33,30 +33,42 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(smtpd_app).
+-module(erlmail_store_sup).
 -author('sjackson@simpleenigma.com').
--include("../include/smtp.hrl").
 
--behaviour(application).
+-behaviour(supervisor).
 
-%% Internal API
--export([start_client/0]).
+-define(MAX_RESTART,    5).
+-define(MAX_TIME,      60).
 
-%% Application and Supervisor callbacks
--export([start/2, stop/1]).
+-export([init/1,start_link/0]).
 
 
-%% A startup function for spawning new client connection handling FSM.
-%% To be called by the TCP listener process.
-start_client() ->
-    supervisor:start_child(smtpd_sup, []).
+start_link() ->
+	supervisor:start_link({local,?MODULE},?MODULE,[]).
 
-%%----------------------------------------------------------------------
-%% Application behaviour callbacks
-%%----------------------------------------------------------------------
-start(_Type, _Args) ->
-    {ok,ListenPort} = application:get_env(erlmail,server_smtp_port),
-    supervisor:start_link({local, smtpd_sup}, smtpd_sup, [ListenPort, smtpd_fsm]).
 
-stop(_S) ->
-    ok.
+init(_Args) -> 
+    {ok,
+        {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
+            [
+              {   erlmail_store_sup,
+                  {erlmail_store,start_link,[]},
+                  permanent,
+                  2000,
+                  worker,
+                  [erlmail_store]
+              }
+            ]
+        }
+    }.
+
+
+
+
+
+
+
+
+
+
