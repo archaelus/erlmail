@@ -1,11 +1,11 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       ErlMail package start and stop funcations
+%%% @doc       ErlMail applicaiton definition file
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
-%%% @since     0.0.3
+%%% @since     0.0.6
 %%% @end
 %%%
 %%%
@@ -33,35 +33,16 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(erlmail).
+-module(erlmail_app).
 -author('sjackson@simpleenigma.com').
 
--export([start/0,stop/0,restart/0,reload/0]).
+-behaviour(application).
+
+-export([start/2,stop/1]).
 
 
-start() -> 
-	io:format("Starting ErlMail ...~n"),
-	application:start(erlmail).
+start(_Type, _Args) ->
+	erlmail_sup:start_link().
 
-stop() ->
-	io:format("Stopping ErlMail ...~n"),
-	application:stop(erlmail).
+stop(_State) -> ok.
 
-restart() ->
-	stop(),
-	reload(),
-	start().
-
-reload() ->
-	io:format("Reloading ErlMail Modules ...~n"),
-	reload:reload([
-		erlmail_conf,erlmail_util,erlmail_store,
-		gen_store,dets_store,mnesia_store,
-		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
-		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
-		mime,
-		smtpd_app,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
-		smtpc,smtpc_fsm,smtpc_util,
-		erlmail_test
-		]).
-	

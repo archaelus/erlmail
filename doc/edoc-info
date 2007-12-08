@@ -2,6 +2,7 @@
 {packages,[]}.
 {modules,[dets_store,
           erlmail,
+          erlmail_app,
           erlmail_conf,
           erlmail_store,
           erlmail_test,
