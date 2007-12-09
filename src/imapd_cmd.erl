@@ -91,6 +91,7 @@ command(#imap_cmd{tag = Tag, cmd = logout = Command, data = []}, State) ->
 	imapd_resp:respond([#imap_resp{tag = '*', status = bye, info = "ErlMail terminating connection"},
 						#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	gen_tcp:close(State#imapd_fsm.socket),
+	gen_fsm:send_all_state_event(self(),stop),
 	State;
 command(#imap_cmd{tag = Tag, cmd = logout = Command, data = Data}, State) -> 
 	imapd_util:out(Command, Data, State),
