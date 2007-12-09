@@ -54,7 +54,6 @@ init(_Args) ->
 	MaxR = 1,
 	MaxT = 60,
 	Children = [child_spec(erlmail_store) | children(Servers)],
-	?D(Children),
 	case supervisor:check_childspecs(Children) of
 		ok -> {ok, {{RestartStrategy,MaxR,MaxT}, Children}};
 		{error,_Reason} -> ignore
