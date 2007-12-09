@@ -40,31 +40,35 @@
 -behaviour(supervisor).
 
 -export([init/1,start_link/0]).
+%% Internal API
+-export([start_client/0]).
 
 start_link() ->
     {ok,ListenPort} = application:get_env(erlmail,server_smtp_port),
     supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, smtpd_fsm]).
 
+%% A startup function for spawning new client connection handling FSM.
+%% To be called by the TCP listener process.
+start_client() -> supervisor:start_child(smtpd_client_sup, []).
+
 
 init([Port, Module]) ->
     {ok,
         {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % SMTPD Listener
-              {   smtpd_listener,                          % Id       = internal id
-                  {smtpd_listener,start_link,[Port,Module]}, % StartFun = {M, F, A}
-                  permanent,                               % Restart  = permanent | transient | temporary
-                  2000,                                    % Shutdown = brutal_kill | int() >= 0 | infinity
-                  worker,                                  % Type     = worker | supervisor
-                  [smtpd_listener]                           % Modules  = [Module] | dynamic
-              },
-              % Client instance supervisor
-              {   smtpd_client_sup,
-                  {supervisor,start_link,[{local, smtpd_client_sup}, ?MODULE, [Module]]},
-                  permanent,                               % Restart  = permanent | transient | temporary
-                  infinity,                                % Shutdown = brutal_kill | int() >= 0 | infinity
-                  supervisor,                              % Type     = worker | supervisor
-                  []                                       % Modules  = [Module] | dynamic
+            [% SMTPD Listener
+              {smtpd_listener,
+               {smtpd_listener,start_link,[Port,Module]},
+               permanent,
+               2000,
+               worker,
+               [smtpd_listener]
+              }, % Client instance supervisor
+              {smtpd_client_sup,
+               {supervisor,start_link,[{local, smtpd_client_sup}, ?MODULE, [Module]]},
+               permanent,
+               infinity,
+               supervisor,
+               []
               }
             ]
         }
@@ -73,14 +77,13 @@ init([Port, Module]) ->
 init([Module]) ->
     {ok,
         {_SupFlags = {simple_one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % SMTPD Client
-              {   undefined,                               % Id       = internal id
-                  {Module,start_link,[]},                  % StartFun = {M, F, A}
-                  temporary,                               % Restart  = permanent | transient | temporary
-                  2000,                                    % Shutdown = brutal_kill | int() >= 0 | infinity
-                  worker,                                  % Type     = worker | supervisor
-                  []                                       % Modules  = [Module] | dynamic
+            [% SMTPD Client
+              {undefined,
+               {Module,start_link,[]},
+               temporary,
+               2000,
+               worker,
+               []
               }
             ]
         }

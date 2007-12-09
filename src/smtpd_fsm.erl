@@ -159,6 +159,8 @@ init([]) ->
 %%          {stop, Reason, NewStateData}
 %% @private
 %%-------------------------------------------------------------------------
+handle_event(stop, _StateName, State) ->
+	{stop, normal, State};
 handle_event(Event, StateName, StateData) ->
     {stop, {StateName, undefined_event, Event}, StateData}.
 
@@ -200,7 +202,8 @@ handle_info(_Info, StateName, StateData) ->
 %% Returns: any
 %% @private
 %%-------------------------------------------------------------------------
-terminate(_Reason, _StateName, #smtpd_fsm{socket=Socket}) ->
+terminate(_Reason, _StateName, #smtpd_fsm{socket=Socket} = _State) ->
+	% @todo: close conenctions to message store
     (catch gen_tcp:close(Socket)),
     ok.
 

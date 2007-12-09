@@ -57,7 +57,7 @@ reload() ->
 	reload:reload([
 		erlmail_app,erlmail_sup,erlmail_util,erlmail_store,erlmail_store_sup,
 		gen_store,dets_store,mnesia_store,mysql_store,
-		imapd,imapd_listener,imapd_fsm,imapd_app,imap_sup,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
+		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_sup,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
 		mime,
 		smtpd_app,smtpd_sup,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,

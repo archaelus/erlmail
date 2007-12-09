@@ -117,7 +117,7 @@ command({help = Command,_Param},State) ->
 command({quit = Command,[]},State) ->
 	out(Command,State),
 	send(State,221),
-	gen_tcp:close(State#smtpd_fsm.socket),
+	gen_fsm:send_all_state_event(self(),stop),
 	State;
 command({rset = Command,[]},State) ->
 	out(Command,State),

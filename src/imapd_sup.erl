@@ -40,6 +40,7 @@
 -behaviour(supervisor).
 
 -export([init/1,start_link/0]).
+-export([start_client/0]).
 
 -define(MAX_RESTART,    5).
 -define(MAX_TIME,      60).
@@ -49,42 +50,36 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, imapd_fsm]).
 
 
+%% A startup function for spawning new client connection handling FSM.
+%% To be called by the TCP listener process.
+start_client() -> supervisor:start_child(imapd_client_sup, []).
+
+
 
 init([Port, Module]) ->
     {ok,
         {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % IMAP TCP Listener
-              {   imapd_listener,
-                  {imapd_listener,start_link,[Port,Module]},
-                  permanent,
-                  2000,
-                  worker,
-                  [imapd_listener]
-              },
-              % IMAP Response Server
-              {   imapd_resp,
-                  {imapd_resp,start_link,[]},
-                  permanent,
-                  2000,
-                  worker,
-                  [imapd_resp]
-              },
-%              % Mesage Store Server - NEED TO RELOCATE THIS
-%              {   erlmail_store,
-%                  {erlmail_store,start_link,[]},
-%                  permanent,
-%                  2000,
-%                  worker,
-%                  [erlmail_store]
-%              },
-              % Client instance supervisor
-              {   imapd_client_sup,
-                  {supervisor,start_link,[{local, imapd_client_sup}, ?MODULE, [Module]]},
-                  permanent,
-                  infinity,
-                  supervisor,
-                  []
+            [% IMAP Response Server
+              {imapd_resp,
+               {imapd_resp,start_link,[]},
+               permanent,
+               2000,
+               worker,
+               [imapd_resp]
+              },% IMAP TCP Listener
+              {imapd_listener,
+               {imapd_listener,start_link,[Port,Module]},
+               permanent,
+               2000,
+               worker,
+               [imapd_listener]
+              },% Client instance supervisor
+              {imapd_client_sup,
+               {supervisor,start_link,[{local, imapd_client_sup}, ?MODULE, [Module]]},
+               permanent,
+               infinity,
+               supervisor,
+               []
               }
             ]
         }
@@ -93,14 +88,13 @@ init([Port, Module]) ->
 init([Module]) ->
     {ok,
         {_SupFlags = {simple_one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % TCP Client
-              {   undefined,
-                  {Module,start_link,[]},
-                  temporary,
-                  2000,
-                  worker,
-                  []
+            [% IMAPD Client
+              {undefined,
+               {Module,start_link,[]},
+               temporary,
+               2000,
+               worker,
+               []
               }
             ]
         }

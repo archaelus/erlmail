@@ -39,17 +39,13 @@
 
 -behaviour(application).
 
-%% Internal API
--export([start_client/0]).
+
 
 %% Application and Supervisor callbacks
 -export([start/2, stop/1]).
 
 
-%% A startup function for spawning new client connection handling FSM.
-%% To be called by the TCP listener process.
-start_client() ->
-    supervisor:start_child(smtpd_sup, []).
+
 
 %%----------------------------------------------------------------------
 %% Application behaviour callbacks

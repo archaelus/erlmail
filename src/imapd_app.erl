@@ -39,99 +39,18 @@
 
 -behaviour(application).
 
-%% Internal API
--export([start_client/0]).
+
 
 %% Application and Supervisor callbacks
--export([start/2, stop/1, init/1]).
+-export([start/2, stop/1]).
 
--define(MAX_RESTART,    5).
--define(MAX_TIME,      60).
--define(DEF_PORT,    143).
-
-%% A startup function for spawning new client connection handling FSM.
-%% To be called by the TCP listener process.
-start_client() ->
-    supervisor:start_child(imapd_client_sup, []).
 
 %%----------------------------------------------------------------------
 %% Application behaviour callbacks
 %%----------------------------------------------------------------------
 start(_Type, _Args) ->
-    ListenPort = get_app_env(listen_port, ?DEF_PORT),
+    ListenPort = erlmail_util:get_app_env(server_imap_port, 143),
     supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, imapd_fsm]).
 
 stop(_S) ->
     ok.
-
-%%----------------------------------------------------------------------
-%% Supervisor behaviour callbacks
-%%----------------------------------------------------------------------
-init([Port, Module]) ->
-    {ok,
-        {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % IMAP TCP Listener
-              {   imapd_sup,
-                  {imapd_listener,start_link,[Port,Module]},
-                  permanent,
-                  2000,
-                  worker,
-                  [imapd_listener]
-              },
-              % IMAP Response Server
-              {   imapd_resp,
-                  {imapd_resp,start_link,[]},
-                  permanent,
-                  2000,
-                  worker,
-                  [imapd_resp]
-              },
-              % Mesage Store Server - NEED TO RELOCATE THIS
-              {   erlmail_store,
-                  {erlmail_store,start_link,[]},
-                  permanent,
-                  2000,
-                  worker,
-                  [erlmail_store]
-              },
-              % Client instance supervisor
-              {   imapd_client_sup,
-                  {supervisor,start_link,[{local, imapd_client_sup}, ?MODULE, [Module]]},
-                  permanent,
-                  infinity,
-                  supervisor,
-                  []
-              }
-            ]
-        }
-    };
-
-init([Module]) ->
-    {ok,
-        {_SupFlags = {simple_one_for_one, ?MAX_RESTART, ?MAX_TIME},
-            [
-              % TCP Client
-              {   undefined,
-                  {Module,start_link,[]},
-                  temporary,
-                  2000,
-                  worker,
-                  []
-              }
-            ]
-        }
-    }.
-
-%%----------------------------------------------------------------------
-%% Internal functions
-%%----------------------------------------------------------------------
-get_app_env(Opt, Default) ->
-    case application:get_env(application:get_application(), Opt) of
-    {ok, Val} -> Val;
-    _ ->
-        case init:get_argument(Opt) of
-        [[Val | _]] -> Val;
-        error       -> Default
-        end
-    end.
