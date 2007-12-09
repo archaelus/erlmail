@@ -51,8 +51,8 @@
 <tr><td valign="top"><a href="#copy-3">copy/3</a></td><td>copies existing messages to Dest mailbox.</td></tr>
 <tr><td valign="top"><a href="#expunge-1">expunge/1</a></td><td>Permanently removes all messages with DELETED flag from MailBox.</td></tr>
 <tr><td valign="top"><a href="#flags_resp-1">flags_resp/1</a></td><td>Takes a list of flags and returns a response string.</td></tr>
-<tr><td valign="top"><a href="#greeting-1">greeting/1</a></td><td>Returns IMAP greeting string from config file or uses Default.</td></tr>
-<tr><td valign="top"><a href="#greeting_capability-1">greeting_capability/1</a></td><td>Check if capability data should be returned in greeting.</td></tr>
+<tr><td valign="top"><a href="#greeting-0">greeting/0</a></td><td>Returns IMAP greeting string from config file or uses Default.</td></tr>
+<tr><td valign="top"><a href="#greeting_capability-0">greeting_capability/0</a></td><td>Check if capability data should be returned in greeting.</td></tr>
 <tr><td valign="top"><a href="#heirachy_char-0">heirachy_char/0</a></td><td>Gets Heirarchy chara from config file.</td></tr>
 <tr><td valign="top"><a href="#inbox-1">inbox/1</a></td><td>Make sure that the string INBOX is always capitalized at the
        begining of the mailbox name.</td></tr>
@@ -106,12 +106,12 @@
 <p><tt>flags_resp(List::list()) -&gt; string()</tt></p>
 <p>Takes a list of flags and returns a response string.</p>
 
-<h3><a name="greeting-1">greeting/1</a></h3>
-<p><tt>greeting(Options::list()) -&gt; string()</tt></p>
+<h3><a name="greeting-0">greeting/0</a></h3>
+<p><tt>greeting() -&gt; string()</tt></p>
 <p>Returns IMAP greeting string from config file or uses Default.</p>
 
-<h3><a name="greeting_capability-1">greeting_capability/1</a></h3>
-<p><tt>greeting_capability(Options::list()) -&gt; string()</tt></p>
+<h3><a name="greeting_capability-0">greeting_capability/0</a></h3>
+<p><tt>greeting_capability() -&gt; bool()</tt></p>
 <p>Check if capability data should be returned in greeting.
        Default: false</p>
 

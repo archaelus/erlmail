@@ -72,11 +72,14 @@ create(Type) -> create(Type,[node()]).
 %%-------------------------------------------------------------------------
 create(Type,NodeList) when Type =:= domain; Type =:= user; Type =:= message; Type =:= mailbox_store ->
 	{TableName,TableDef} = case Type of
-		domain  -> {erlmail_conf:lookup_atom(mnesia_table_domain), [{disc_copies,NodeList},{type,set},{record_name,domain}, {attributes,record_info(fields,domain)}]};
-		user    -> {erlmail_conf:lookup_atom(mnesia_table_user),   [{disc_copies,NodeList},{type,set},{record_name,user},   {attributes,record_info(fields,user)}]};
-		message -> {erlmail_conf:lookup_atom(mnesia_table_message),[{disc_copies,NodeList},{type,set},{record_name,message},{attributes,record_info(fields,message)}]};
-		mailbox_store -> {erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
-			[{disc_copies,NodeList},{type,set},{record_name,mailbox_store},{attributes,record_info(fields,mailbox_store)}]}
+		domain  -> {erlmail_util:get_app_env(mnesia_table_domain,erlmail_domain), 
+					[{disc_copies,NodeList},{type,set},{record_name,domain}, {attributes,record_info(fields,domain)}]};
+		user    -> {erlmail_util:get_app_env(mnesia_table_user,erlmail_user), 
+					[{disc_copies,NodeList},{type,set},{record_name,user},   {attributes,record_info(fields,user)}]};
+		message -> {erlmail_util:get_app_env(mnesia_table_message,erlmail_message), 
+					[{disc_copies,NodeList},{type,set},{record_name,message},{attributes,record_info(fields,message)}]};
+		mailbox_store -> {erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store), 
+					[{disc_copies,NodeList},{type,set},{record_name,mailbox_store},{attributes,record_info(fields,mailbox_store)}]}
 	end,
 	case mnesia:create_table(TableName,TableDef) of
 		{atomic,ok} -> ok;
@@ -88,10 +91,10 @@ create(Type,NodeList) when Type =:= domain; Type =:= user; Type =:= message; Typ
 %% @doc Deletes entry in store of Type.
 %% @end
 %%-------------------------------------------------------------------------
-delete(Domain)  when is_record(Domain,domain)         -> delete(Domain#domain.name,erlmail_conf:lookup_atom(mnesia_table_domain));
-delete(User)    when is_record(User,user)             -> delete(User#user.name,erlmail_conf:lookup_atom(mnesia_table_user));
-delete(MailBox) when is_record(MailBox,mailbox_store) -> delete(MailBox#mailbox_store.name,erlmail_conf:lookup_atom(mnesia_table_mailbox_store));
-delete(Message) when is_record(Message,message)       -> delete(Message#message.name,erlmail_conf:lookup_atom(mnesia_table_message)).
+delete(Domain)  when is_record(Domain,domain)         -> delete(Domain#domain.name,erlmail_util:get_app_env(mnesia_table_domain,erlmail_domain));
+delete(User)    when is_record(User,user)             -> delete(User#user.name,erlmail_util:get_app_env(mnesia_table_user,erlmail_user));
+delete(MailBox) when is_record(MailBox,mailbox_store) -> delete(MailBox#mailbox_store.name,erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store));
+delete(Message) when is_record(Message,message)       -> delete(Message#message.name,erlmail_util:get_app_env(mnesia_table_message,erlmail_message)).
 
 %%-------------------------------------------------------------------------
 %% @spec (Type::store_type(),TableName::atom()) -> ok | undefined | {error,string()}
@@ -115,8 +118,8 @@ delete(Name,TableName) ->
 %%-------------------------------------------------------------------------
 deliver(Message) when is_record(Message,message) -> 
 	{MessageName,UserName,DomainName} = Message#message.name,
-	MailBoxTableName = erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
-	MessageTableName = erlmail_conf:lookup_atom(mnesia_table_message),
+	MailBoxTableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
+	MessageTableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
 	ensure_inbox({UserName,DomainName}),
 	F = fun() ->
 		[MailBox] = mnesia:read({MailBoxTableName,{"INBOX",UserName,DomainName}}),
@@ -136,7 +139,9 @@ deliver(Message) when is_record(Message,message) ->
 %% @end
 %%-------------------------------------------------------------------------
 drop(Type) when Type =:= domain; Type =:= user; Type =:= message; Type =:= mailbox_store -> 
-	TableName = erlmail_conf:lookup_atom(list_to_atom("mnesia_table_" ++ atom_to_list(Type))),
+	Key = list_to_atom("mnesia_table_" ++ atom_to_list(Type)),
+	Default = list_to_atom("erlmail_" ++ atom_to_list(Type)),
+	TableName = erlmail_util:get_app_env(Key, Default),
 	case mnesia:delete_table(TableName) of
 		{atomic,ok} -> ok;
 		{aborted,Reason} -> {error,Reason}
@@ -149,7 +154,7 @@ drop(Type) when Type =:= domain; Type =:= user; Type =:= message; Type =:= mailb
 %%-------------------------------------------------------------------------
 ensure_inbox(User) when is_record(User,user) -> ensure_inbox(User#user.name);
 ensure_inbox({UserName,DomainName}) ->
-	TableName = erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
+	TableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
 	F = fun() ->
 		case mnesia:read({TableName,{"INBOX",UserName,DomainName}}) of
 			[] -> 
@@ -183,10 +188,10 @@ init(NodeList) ->
 %%       #domain{}, #user{}, #message{} or #mailbox_store{}
 %% @end
 %%-------------------------------------------------------------------------
-insert(Domain)  when is_record(Domain,domain)         -> insert(Domain,erlmail_conf:lookup_atom(mnesia_table_domain));
-insert(User)    when is_record(User,user)             -> insert(User,erlmail_conf:lookup_atom(mnesia_table_user));
-insert(MailBox) when is_record(MailBox,mailbox_store) -> insert(MailBox,erlmail_conf:lookup_atom(mnesia_table_mailbox_store));
-insert(Message) when is_record(Message,message)       -> insert(Message,erlmail_conf:lookup_atom(mnesia_table_message)).
+insert(Domain)  when is_record(Domain,domain)         -> insert(Domain,erlmail_util:get_app_env(mnesia_table_domain,erlmail_domain));
+insert(User)    when is_record(User,user)             -> insert(User,erlmail_util:get_app_env(mnesia_table_user,erlmail_user));
+insert(MailBox) when is_record(MailBox,mailbox_store) -> insert(MailBox,erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store));
+insert(Message) when is_record(Message,message)       -> insert(Message,erlmail_util:get_app_env(mnesia_table_message,erlmail_message)).
 %%-------------------------------------------------------------------------
 %% @spec (Record::tuple(),TableName::list()) -> ok | undefined | {error,string()}
 %% @doc  Mnesia Store internal INSERT implimentation
@@ -212,7 +217,7 @@ list() ->
 	Guard = [],
 	Result = '$1',
 	MatchSpec = [{MatchHead, Guard, [Result]}],
-	TableName = erlmail_conf:lookup_atom(mnesia_table_domain),
+	TableName = erlmail_util:get_app_env(mnesia_table_domain,erlmail_domain),
 	F = fun() ->
 		mnesia:select(TableName,MatchSpec)
 		end,
@@ -233,7 +238,7 @@ list(DomainName) when is_list(DomainName) ->
 	Guard = [],
 	Result = '$1',
 	MatchSpec = [{MatchHead, Guard, [Result]}],
-	TableName = erlmail_conf:lookup_atom(mnesia_table_user),
+	TableName = erlmail_util:get_app_env(mnesia_table_user,erlmail_user),
 	F = fun() ->
 		mnesia:select(TableName,MatchSpec)
 		end,
@@ -246,7 +251,7 @@ list({UserName,DomainName}) ->
 	Guard = [],
 	Result = '$1',
 	MatchSpec = [{MatchHead, Guard, [Result]}],
-	TableName = erlmail_conf:lookup_atom(mnesia_table_message),
+	TableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
 	F = fun() ->
 		mnesia:select(TableName,MatchSpec)
 		end,
@@ -277,7 +282,7 @@ mlist(MailBoxName,{UserName,DomainName},Subscribed) ->
 	Guard = [],
 	Result = '$1',
 	MatchSpec = [{MatchHead, Guard, [Result]}],
-	TableName = erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
+	TableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
 	F = fun() ->
 		mnesia:select(TableName,MatchSpec)
 		end,
@@ -304,8 +309,8 @@ mlist(MailBoxName,{UserName,DomainName},Subscribed) ->
 %% @end
 %%-------------------------------------------------------------------------
 recent({MailBoxName,UserName,DomainName}) -> 
-	MailBoxTableName = erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
-	MessageTableName = erlmail_conf:lookup_atom(mnesia_table_message),
+	MailBoxTableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
+	MessageTableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
 	F = fun() ->
 		[MailBox] = mnesia:read({MailBoxTableName,{MailBoxName,UserName,DomainName}}),
 		lists:foldl(fun(MessageName,Recent) -> 
@@ -329,10 +334,10 @@ recent({MailBoxName,UserName,DomainName}) ->
 select(MailBox) when is_record(MailBox,mailbox_store)      ->
 	{MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
 	select({MailBoxName,{UserName,DomainName}});
-select(Domain)  when is_list(Domain)                       -> select(erlmail_conf:lookup_atom(mnesia_table_domain),Domain);
-select({MailBoxName,{UserName,DomainName}})                -> select(erlmail_conf:lookup_atom(mnesia_table_mailbox_store),{MailBoxName,UserName,DomainName});
-select(User)    when is_tuple(User), size(User) == 2       -> select(erlmail_conf:lookup_atom(mnesia_table_user),User);
-select(Message) when is_tuple(Message), size(Message) == 3 -> select(erlmail_conf:lookup_atom(mnesia_table_message),Message).
+select(Domain)  when is_list(Domain)                       -> select(erlmail_util:get_app_env(mnesia_table_domain,erlmail_domain),Domain);
+select({MailBoxName,{UserName,DomainName}})                -> select(erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),{MailBoxName,UserName,DomainName});
+select(User)    when is_tuple(User), size(User) == 2       -> select(erlmail_util:get_app_env(mnesia_table_user,erlmail_user),User);
+select(Message) when is_tuple(Message), size(Message) == 3 -> select(erlmail_util:get_app_env(mnesia_table_message,erlmail_message),Message).
 %%-------------------------------------------------------------------------
 %% @spec (Record::tuple(),TableName::list()) -> ok | undefined | {error,string()}
 %% @doc  Mnesia Store internal SELECT implimentation
@@ -355,8 +360,8 @@ select(TableName,Key) ->
 %% @end
 %%-------------------------------------------------------------------------
 unseen({MailBoxName,UserName,DomainName}) -> 
-	MailBoxTableName = erlmail_conf:lookup_atom(mnesia_table_mailbox_store),
-	MessageTableName = erlmail_conf:lookup_atom(mnesia_table_message),
+	MailBoxTableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
+	MessageTableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
 	F = fun() ->
 		[MailBox] = mnesia:read({MailBoxTableName,{MailBoxName,UserName,DomainName}}),
 		lists:foldl(fun(MessageName,{S,U}) -> 

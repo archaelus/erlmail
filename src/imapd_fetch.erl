@@ -63,8 +63,8 @@ fetch([MessageName|T],Items,State,SeqNum,Acc) ->
 
 
 
-do_fetch(MessageName,Items,#imapd_fsm{user = User} = State) -> 
-	Store = erlmail_conf:lookup_atom(store_type_message,State),
+do_fetch(MessageName,Items,#imapd_fsm{user = User} = _State) -> 
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	{UserName,DomainName} = User#user.name,
 	Message = Store:select({MessageName,UserName,DomainName}),
 	MIME = mime:decode(Message#message.message),

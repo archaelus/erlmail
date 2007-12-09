@@ -511,7 +511,7 @@ command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
 	imapd_util:out(Command,State),
 	case State#imapd_fsm.mailbox_rw of
 		true ->
-			Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+			Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 			{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 			MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
 			imapd_util:expunge(MailBox);
@@ -534,7 +534,7 @@ command(#imap_cmd{tag = Tag, cmd = expunge = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = expunge = Command, data = []}, #imapd_fsm{mailbox = Selected} = State) -> 
 	imapd_util:out(Command,State),
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
 	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
 	{NewMailBox,RespList} = imapd_util:expunge(MailBox),
@@ -588,7 +588,7 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	Current = Store:select(Selected),
 	Messages = imapd_util:seq_message_names(Seq,Current),
 	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
@@ -609,7 +609,7 @@ command(#imap_cmd{tag = Tag, cmd = copy = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
 	imapd_util:out(Command,{Seq,MailBoxName},State),
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	Current = Store:select(Selected),
 	Dest = Store:select({MailBoxName,User#user.name}),
 	case Dest of
@@ -649,7 +649,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMailBox}},
 	#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
 	imapd_util:out(Command,{copy, UIDSeq, DestMailBox},State),
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	Current = Store:select(Selected),
 	Dest = Store:select({DestMailBox,User#user.name}),
 	case Dest of

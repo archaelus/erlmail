@@ -221,4 +221,4 @@ mlist(_MailBoxName,{_UserName,_DomainName},_Subscribed) -> undefined.
 
 
 filename(Type) when is_atom(Type) and ((Type =:= domain) or (Type =:= user) or (Type =:= message)) -> filename(atom_to_list(Type));
-filename(FileName) -> erlmail_conf:lookup(dets_default_path) ++ FileName.
+filename(FileName) -> erlmail_util:get_app_env(dets_default_path,"/tmp/") ++ FileName.

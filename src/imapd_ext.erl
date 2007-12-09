@@ -68,7 +68,7 @@ check(Key) ->
 %% @end
 %%-------------------------------------------------------------------------
 
-list() -> list(erlmail_conf:lookup(server_imap_extentions)).
+list() -> list(erlmail_util:get_app_env(server_imap_extentions,[])).
 %%-------------------------------------------------------------------------
 %% @spec (ExtentionList::list()) -> list()
 %% @doc List all verified extentions from ExtentionList

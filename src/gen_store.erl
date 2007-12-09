@@ -38,7 +38,7 @@
 -include("../include/erlmail.hrl").
 -include("../include/imap.hrl").
 
--export([message_name/1,lookup/1,lookup/2]).
+-export([message_name/1,lookup/1]).
 -export([select/2,select/3,update/2]).
 -export([behaviour_info/1]).
 
@@ -52,19 +52,19 @@ behaviour_info(_Other) -> undefined.
 
 
 
-select(MailBox,State) when is_record(MailBox,mailbox_store) -> 
-	Store = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+select(MailBox,_State) when is_record(MailBox,mailbox_store) -> 
+	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	Store:select(MailBox).
 
 
-select(message,MessageName,#imapd_fsm{user = User} = State) ->
-	Store = erlmail_conf:lookup_atom(store_type_message,State),
+select(message,MessageName,#imapd_fsm{user = User} = _State) ->
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	{UserName,DomainName} = User#user.name,
 	Store:select({MessageName,UserName,DomainName}).
 
 
-update(Message,State) when is_record(Message,message) ->
-	Store = erlmail_conf:lookup_atom(store_type_message,State),
+update(Message,_State) when is_record(Message,message) ->
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	Store:update(Message).
 
 
@@ -79,13 +79,13 @@ update(Message,State) when is_record(Message,message) ->
 
 
 
-lookup(Type) -> lookup(Type,erlmail_conf:read()).
-lookup(domain,       State) -> erlmail_conf:lookup_atom(store_type_domain,       State);
-lookup(user,         State) -> erlmail_conf:lookup_atom(store_type_user,         State);
-lookup(message,      State) -> erlmail_conf:lookup_atom(store_type_message,      State);
-lookup(mailbox_store,State) -> erlmail_conf:lookup_atom(store_type_mailbox_store,State);
-lookup(all,State)           ->
-	{lookup(domain,State),lookup(user,State),lookup(message,State),lookup(mailbox_store,State)}.
+
+lookup(domain)        -> erlmail_util:get_app_env(store_type_domain,mnesia_store);
+lookup(user)          -> erlmail_util:get_app_env(store_type_user,mnesia_store);
+lookup(message)       -> erlmail_util:get_app_env(store_type_message,mnesia_store);
+lookup(mailbox_store) -> erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store);
+lookup(all)           ->
+	{lookup(domain),lookup(user),lookup(message),lookup(mailbox_store)}.
 
 
 

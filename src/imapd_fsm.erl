@@ -80,8 +80,7 @@ set_socket(Pid, Socket) when is_pid(Pid), is_port(Socket) ->
 %%-------------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-	Options = erlmail_conf:read(),
-    {ok, 'WAIT_FOR_SOCKET', #imapd_fsm{options = Options}}.
+    {ok, 'WAIT_FOR_SOCKET', #imapd_fsm{}}.
 
 %%-------------------------------------------------------------------------
 %% Func: StateName/2
@@ -95,8 +94,8 @@ init([]) ->
     inet:setopts(Socket, [{active, once}, binary]),
     {ok, {IP, _Port}} = inet:peername(Socket),
 	NextState = State#imapd_fsm{socket=Socket, addr=IP},
-	Greeting = imapd_util:greeting(State),
-	case imapd_util:greeting_capability(State) of
+	Greeting = imapd_util:greeting(),
+	case imapd_util:greeting_capability() of
 		true ->
 			Capability = "CAPABILITY " ++ imapd_ext:capability(),
 			imapd_util:out(greeting,Capability,NextState),

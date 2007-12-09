@@ -77,8 +77,7 @@ set_socket(Pid, Socket) when is_pid(Pid), is_port(Socket) ->
 %%-------------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-	Options = erlmail_conf:read(),
-    {ok, 'WAIT_FOR_SOCKET', #smtpd_fsm{options=Options}}.
+    {ok, 'WAIT_FOR_SOCKET', #smtpd_fsm{}}.
 
 %%-------------------------------------------------------------------------
 %% Func: StateName/2

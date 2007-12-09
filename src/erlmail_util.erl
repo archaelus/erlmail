@@ -40,8 +40,11 @@
 -include("../include/smtp.hrl").
 -include("../include/imap.hrl").
 
+-define(APPLICATION,erlmail).
+
 -export([split_email/1,combine_email/1,combine_email/2]).
 -export([create/4,join/1,remove/1,check/1,check/4]).
+-export([get_app_env/2]).
 
 
 
@@ -69,7 +72,19 @@ combine_email(UsersName,DomainName)               -> UsersName ++ [64] ++ Domain
 
 
 
-
+get_app_env(Opt, Default) ->
+	case lists:keysearch(?APPLICATION, 1, application:loaded_applications()) of
+		false -> application:load(?APPLICATION);
+		_ -> ok
+	end,
+    case application:get_env(?APPLICATION, Opt) of
+    {ok, Val} -> Val;
+    _ ->
+        case init:get_argument(Opt) of
+        [[Val | _]] -> Val;
+        error       -> Default
+        end
+    end.
 
 
 

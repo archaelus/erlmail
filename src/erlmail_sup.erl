@@ -36,6 +36,8 @@
 -module(erlmail_sup).
 -author('sjackson@simpleenigma.com').
 
+-include("../include/erlmail.hrl").
+
 -behaviour(supervisor).
 
 -export([init/1]).
@@ -51,7 +53,8 @@ init(_Args) ->
 	RestartStrategy = one_for_one,
 	MaxR = 1,
 	MaxT = 60,
-	Children = children([erlmail_store | Servers]),
+	Children = [child_spec(erlmail_store) | children(Servers)],
+	?D(Children),
 	case supervisor:check_childspecs(Children) of
 		ok -> {ok, {{RestartStrategy,MaxR,MaxT}, Children}};
 		{error,_Reason} -> ignore

@@ -41,7 +41,7 @@
 
 -export([clean/1,copy/3,expunge/1]).
 -export([flags_resp/1,flags_resp/2]).
--export([greeting/1,greeting_capability/1]).
+-export([greeting/0,greeting_capability/0]).
 -export([heirachy_char/0,inbox/1]).
 -export([mailbox_info/1,mailbox_info/2,mailbox_info/3]).
 -export([out/2,out/3,send/2]).
@@ -73,9 +73,9 @@ clean(String) ->
 %% @doc copies existing messages to Dest mailbox
 %% @end
 %%-------------------------------------------------------------------------
-copy(Dest,Messages,#imapd_fsm{user = User} = State) -> 
-	MessageStore = erlmail_conf:lookup_atom(store_type_message,State),
-	MailBoxStore = erlmail_conf:lookup_atom(store_type_mailbox_store,State),
+copy(Dest,Messages,#imapd_fsm{user = User} = _State) -> 
+	MessageStore = erlmail_util:get_app_env(store_type_message,mnesia_store),
+	MailBoxStore = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	{UserName,DomainName} = User#user.name,
 	NewDest = lists:foldl(fun(MessageName,MailBox) -> 
 		M = MessageStore:select({MessageName,UserName,DomainName}),
@@ -98,7 +98,7 @@ copy(Dest,Messages,#imapd_fsm{user = User} = State) ->
 %% @end
 %%-------------------------------------------------------------------------
 expunge(MailBox) when is_record(MailBox,mailbox_store) -> 
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
 	{Messages,Responses,_Position} = lists:foldl(fun(MessageName,{M,R,Pos}) -> 
 		Message = Store:select({MessageName,UserName,DomainName}),
@@ -132,26 +132,24 @@ flags_resp([H|T],Acc) when is_atom(H) ->
 flags_resp([],Acc) -> "(" ++ string:strip(lists:flatten(lists:reverse(Acc))) ++ ")".
 
 %%-------------------------------------------------------------------------
-%% @spec greeting(Options::list()) -> string()
+%% @spec () -> string()
 %% @doc Returns IMAP greeting string from config file or uses Default.
 %% @end
 %%-------------------------------------------------------------------------
-greeting(State) when is_record(State,imapd_fsm) -> greeting(State#imapd_fsm.options);
-greeting(Options) ->
-	case erlmail_conf:lookup(server_imap_greeting,Options) of
+greeting() ->
+	case erlmail_util:get_app_env(server_imap_greeting,"ErlMail IMAP4 Server ready") of
 		[] -> "ErlMail IMAP4 Server ready";
 		Greeting -> Greeting
 	end.
 
 %%-------------------------------------------------------------------------
-%% @spec (Options::list()) -> string()
+%% @spec () -> bool()
 %% @doc Check if capability data should be returned in greeting. 
 %%      Default: false
 %% @end
 %%-------------------------------------------------------------------------
-greeting_capability(State) when is_record(State,imapd_fsm) -> greeting_capability(State#imapd_fsm.options);
-greeting_capability(Options) ->
-	case erlmail_conf:lookup_atom(server_imap_greeting_capability,Options) of
+greeting_capability() ->
+	case erlmail_util:get_app_env(server_imap_greeting_capability,false) of
 		true -> true;
 		_ -> false
 	end.
@@ -162,11 +160,7 @@ greeting_capability(Options) ->
 %%      Default: "/"
 %% @end
 %%-------------------------------------------------------------------------
-heirachy_char() ->
-	case erlmail_conf:lookup(server_imap_hierarchy) of
-		[] -> "/";
-		Heirarchy -> Heirarchy
-	end.
+heirachy_char() -> erlmail_util:get_app_env(server_imap_hierarchy,"/").
 
 %%-------------------------------------------------------------------------
 %% @spec (MailBoxName::string()) -> string()
@@ -261,25 +255,25 @@ mailbox_info(MailBox,{UserName,DomainName}) -> mailbox_info(MailBox,{UserName,Do
 mailbox_info(MailBox,{UserName,DomainName},all) -> mailbox_info(MailBox,{UserName,DomainName},[exists,messages,unseen,recent,flags,permanentflags]);
 
 mailbox_info(MailBox,{UserName,DomainName},[exists|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store =  erlmail_util:get_app_env(store_type_message,mnesia_store),
 	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
 		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
 		MailBoxStore -> mailbox_info(MailBox#mailbox{exists=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[messages|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
 		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
 		MailBoxStore -> mailbox_info(MailBox#mailbox{messages=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[unseen|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	case Store:unseen({MailBox#mailbox.name,UserName,DomainName}) of
 		{_Seen,Unseen} ->  mailbox_info(MailBox#mailbox{unseen=length(Unseen)},{UserName,DomainName},T);
 		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[recent|T]) ->
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	case Store:recent({MailBox#mailbox.name,UserName,DomainName}) of
 		Recent when is_list(Recent) ->  mailbox_info(MailBox#mailbox{recent=length(Recent)},{UserName,DomainName},T);
 		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
@@ -808,7 +802,7 @@ uidseq_to_list([H|T],State,Acc) ->
 %%% Important to complete UID command
 uidseq_message_names(UIDSeq,MailBox) -> 
 	{_MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
-	Store = erlmail_conf:lookup_atom(store_type_message),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	Messages = lists:foldl(fun(MessageName,Acc) -> 
 		Message = Store:select({MessageName,UserName,DomainName}),
 		case lists:member(Message#message.uid,UIDSeq) of

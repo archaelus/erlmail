@@ -212,11 +212,11 @@ handle_info(_Info,State) ->
 init(_) -> 
     process_flag(trap_exit, true),
 	erlmail_util:check(message_store,message_store,set,[server,mailbox]),
-	System = mnesia_store,
-	Domain  = erlmail_conf:lookup_atom(store_type_domain),
-	User    = erlmail_conf:lookup_atom(store_type_user),
-	Message = erlmail_conf:lookup_atom(store_type_message),
-	Mailbox = erlmail_conf:lookup_atom(store_type_mailbox_store),
+	System  = erlmail_util:get_app_env(store_type_system,mnesia_store),
+	Domain  = erlmail_util:get_app_env(store_type_domain,mnesia_store),
+	User    = erlmail_util:get_app_env(store_type_user,mnesia_store),
+	Message = erlmail_util:get_app_env(store_type_message,mnesia_store),
+	Mailbox = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
 	State = #erlmail_store{system = System, domain = Domain, user = User, message = Message, mailbox = Mailbox},
 	{ok, State}.
 %%-------------------------------------------------------------------------

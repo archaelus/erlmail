@@ -47,7 +47,7 @@ command(Line,State) when is_binary(Line) -> command(parse(Line),State);
 
 command({greeting,_},State) ->
 	out(greeting,State),
-	send(State,220,erlmail_conf:lookup(server_smtp_greeting,State)),
+	send(State,220,erlmail_util:get_app_env(server_smtp_greeting,"ErlMail http://erlsoft.org (NO UCE)")),
 	State;
 
 command({helo = Command,Domain},State) when is_list(Domain), length(Domain) > 0 -> 
@@ -150,23 +150,23 @@ command({Command,Param},State) ->
 
 
 
-
-check_user({UserName,DomainName},State) ->
-	Store = erlmail_conf:lookup(store_type_user,State),
+% todo: remove state variable
+check_user({UserName,DomainName},_State) ->
+	Store = erlmail_util:get_app_env(store_type_user,mnesia_store),
 	case Store:select({UserName,DomainName}) of
 		[]   -> false;
 		_User -> true
 	end.
 
-
+% todo: remove state variable
 store_message(Message,State) when is_binary(Message) -> store_message(binary_to_list(Message),State);
-store_message(Message,State) when is_record(Message,message) ->
-	Store = erlmail_conf:lookup(store_type_message,State),
+store_message(Message,_State) when is_record(Message,message) ->
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 %	?D({Store,Message}),
 %	Store:insert(Message);
 	Store:deliver(Message#message{flags=[recent],options=[{internaldate,{date(),time()}}]});
 store_message(Message,State) ->
-	Store = erlmail_conf:lookup(store_type_message,State),
+	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	lists:map(fun(To) -> 
 		MessageName = Store:message_name(now()),
 		store_message(MessageName,erlmail_util:split_email(To),Message,State)

@@ -52,7 +52,7 @@ init(_Args) ->
     {ok,
         {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
             [
-              {   erlmail_store_sup,
+              {   erlmail_store,
                   {erlmail_store,start_link,[]},
                   permanent,
                   2000,
