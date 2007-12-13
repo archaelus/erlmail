@@ -39,7 +39,7 @@
 
 -export([encode/1,decode/1]).
 
--export([split/1,headers/1,split_multipart/2]).
+-export([split/1,headers/1,split_multipart/2,get_header/2]).
 
 
 
@@ -65,7 +65,11 @@ enc_header([],Acc) -> lists:reverse(Acc);
 enc_header([{from,From}|Rest],Acc) ->
 	enc_header(Rest,[10,13,From,32,"From:"|Acc]);
 enc_header([{to,To}|Rest],Acc) ->
-	enc_header(Rest,[10,13,To,32,"To:"|Acc]);
+	enc_header(Rest,[10,13,enc_addr_list(To),32,"To:"|Acc]);
+enc_header([{cc,CC}|Rest],Acc) ->
+	enc_header(Rest,[10,13,enc_addr_list(CC),32,"CC:"|Acc]);
+enc_header([{bcc,BCC}|Rest],Acc) ->
+	enc_header(Rest,[10,13,enc_addr_list(BCC),32,"BCC:"|Acc]);
 enc_header([{subject,Subject}|Rest],Acc) ->
 	enc_header(Rest,[10,13,Subject,32,"Subject:"|Acc]);
 enc_header([{Atom,_Value}|Rest],Acc) ->
@@ -73,12 +77,23 @@ enc_header([{Atom,_Value}|Rest],Acc) ->
 
 
 
+enc_addr_list(List) -> enc_addr_list(List,[]).
+enc_addr_list([],Acc) -> string:strip(lists:flatten(lists:reverse(Acc)),right,44);
+enc_addr_list([{UserName,DomainName}|Rest],Acc) ->
+	Address = enc_addr({UserName,DomainName}),
+	enc_addr_list(Rest,[44,Address|Acc]);
+enc_addr_list([Address|Rest],Acc) ->
+	enc_addr_list(Rest,[44,enc_addr(Address)|Acc]).
 
 
 
-
-
-
+enc_addr(#addr{description = []} = Addr) when is_record(Addr,addr) ->
+	"<" ++ Addr#addr.username ++ "@" ++ Addr#addr.domainname ++ ">";
+enc_addr(Addr) when is_record(Addr,addr) ->
+	"\"" ++ Addr#addr.description ++ "\" <" ++ Addr#addr.username ++ "@" ++ Addr#addr.domainname ++ ">";
+enc_addr({UserName,DomainName,Desc})  -> "\"" ++ Desc ++ "\" <" ++ UserName ++ "@" ++ DomainName ++ ">";
+enc_addr({UserName,DomainName}) -> "<" ++ UserName ++ "@" ++ DomainName ++ ">";
+enc_addr(Address) -> "<" ++ Address ++ ">".
 
 
 
@@ -128,9 +143,22 @@ headers([H|T],Acc) ->
 	Pos = string:chr(H,58),
 	{HeaderString,Value} = lists:split(Pos,H),
 	Header = list_to_atom(http_util:to_lower(string:strip(HeaderString,right,58))),
-	headers(T,[{Header,string:strip(Value)}|Acc]); %% @todo: strip tabs as well
+	headers(T,[head_clean(Header,Value)|Acc]);
 headers([],Acc) -> lists:reverse(Acc).
 	
+
+
+head_clean(Key,Value) ->
+	{Key,strip(Value)}.
+
+
+strip(Value) -> strip(Value,[32,9,13,10]).
+strip(Value,[]) -> Value;
+strip(Value,[H|T]) ->
+	strip(string:strip(Value,both,H),T).
+
+	
+
 
 
 %%-------------------------------------------------------------------------
@@ -194,7 +222,12 @@ split_multipart(Boundary,Body,Acc) ->
 
 
 
-
+get_header(Key,MIME) when is_record(MIME,mime) -> get_header(Key,MIME#mime.header);
+get_header(Key,Header) ->
+	case lists:keysearch(Key,1,Header) of
+		{value,{Key,Value}} -> Value;
+		_ -> []
+	end.
 
 
 

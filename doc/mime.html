@@ -25,6 +25,7 @@
 <h2><a name="index">Function Index</a></h2>
 <table width="100%" border="1"><tr><td valign="top"><a href="#decode-1">decode/1</a></td><td>Recursively decodes a string into a #mime{} record.</td></tr>
 <tr><td valign="top"><a href="#encode-1">encode/1</a></td><td>Encodes a #mime{} record into a string.</td></tr>
+<tr><td valign="top"><a href="#get_header-2">get_header/2</a></td><td/></tr>
 <tr><td valign="top"><a href="#headers-1">headers/1</a></td><td>Parses HeaderText into a Key/Value list.</td></tr>
 <tr><td valign="top"><a href="#split-1">split/1</a></td><td>Splits the part at the lcoation of two CRLF (\r\n) in a row and
        returns a #mime{} record.</td></tr>
@@ -41,6 +42,10 @@
 <h3><a name="encode-1">encode/1</a></h3>
 <p><tt>encode(Mime::<a href="#type-mime">mime()</a>) -&gt; string() | {error, Reason::atom()}</tt></p>
 <p>Encodes a #mime{} record into a string</p>
+
+<h3><a name="get_header-2">get_header/2</a></h3>
+<tt>get_header(Key, MIME) -&gt; term()
+</tt>
 
 <h3><a name="headers-1">headers/1</a></h3>
 <p><tt>headers(HeaderText::string()) -&gt; HeaderList::list()</tt></p>

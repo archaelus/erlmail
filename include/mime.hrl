@@ -16,3 +16,9 @@
 	body        = [],
 	body_text   = []
 	}).
+
+-record(addr,{
+	username    = [],
+	domainname  = [],
+	description = []
+	}).
