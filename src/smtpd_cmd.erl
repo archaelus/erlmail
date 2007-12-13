@@ -81,7 +81,7 @@ command({rcpt = Command,Param},#smtpd_fsm{rcpt = RcptList} = State) when is_list
 command({rcpt = Command,Param},State) ->
 	To = clean_email(Param),
 	out(Command,To,State),
-	case check_user(erlmail_util:split_email(To),State) of
+	case check_user(erlmail_util:split_email(To)) of
 		true ->
 			NewRcptList = case State#smtpd_fsm.rcpt of
 				undefined -> [To];
@@ -150,28 +150,25 @@ command({Command,Param},State) ->
 
 
 
-% todo: remove state variable
-check_user({UserName,DomainName},_State) ->
-	Store = erlmail_util:get_app_env(store_type_user,mnesia_store),
-	case Store:select({UserName,DomainName}) of
-		[]   -> false;
-		_User -> true
+check_user({_UserName,_DomainName} = Name) ->
+	case erlmail_store:status(Name) of
+		{ok,User} when is_record(User,user) -> true;
+		_Other -> false
 	end.
 
-% todo: remove state variable
 store_message(Message,State) when is_binary(Message) -> store_message(binary_to_list(Message),State);
 store_message(Message,_State) when is_record(Message,message) ->
-	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
-%	?D({Store,Message}),
-%	Store:insert(Message);
-	Store:deliver(Message#message{flags=[recent],options=[{internaldate,{date(),time()}}]});
+	erlmail_store:deliver(Message);
 store_message(Message,State) ->
-	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
 	lists:map(fun(To) -> 
-		MessageName = Store:message_name(now()),
+		MessageName = erlmail_store:message_name(now()),
 		store_message(MessageName,erlmail_util:split_email(To),Message,State)
 		end,State#smtpd_fsm.rcpt).
-store_message(MessageName,{UserName,DomainName},Message,State) -> store_message(#message{name={MessageName,UserName,DomainName},message=Message},State).
+
+store_message(MessageName,{UserName,DomainName},Message,State) -> 
+	store_message(#message{
+		name={MessageName,UserName,DomainName},
+		message=Message},State).
 
 
 

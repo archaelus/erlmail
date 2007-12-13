@@ -88,7 +88,10 @@ c(IP) ->
 
 
 
-
+e() -> 
+	Message = #message{message = m()},
+	MIME = mime:decode(m()),
+	erlmail_store:expand(Message,MIME).
 
 clear() -> 
 	mnesia:clear_table(erlmail_message),
@@ -104,15 +107,14 @@ test_message() ->
 	Port = 25,
 	Host = "simpleenigma.com",
 	From = "sjackson@simpleenigma.com",
-	To = "simpleenigma@erlsoft.net",
+	To = ["simpleenigma@erlsoft.net",{"simpleenigmainc","gmail.com"}],
 	Message = m(From,To,"Test","This is a test message"),
-	?D(Message),
 	smtpc:sendmail(IPAddress,Port,Host,From,To,Message).
 
 
 
 m() ->
-	m("sjackson@simpleenigma.com","simpleenigma@erlsoft.net","Test","This is a test message").
+	m("sjackson@simpleenigma.com",["simpleenigma@erlsoft.net",{"simpleenigmainc","gmail.com","Stuart Jackson"}],"Test","This is a test message").
 m(From,To,Subject,Message) ->
 	MIME = #mime{header=[{from,From},{to,To},{subject,Subject}],body = Message},
 	mime:encode(MIME).

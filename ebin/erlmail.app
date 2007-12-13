@@ -9,9 +9,9 @@
   {mod, {erlmail_app, []}},
   {env, [
   	{server_list,[smtp,imap,pop]},
-  	{server_smtp_start,false},
+	{server_smtp_start,false},
 	{server_smtp_name,"smtp.erlsoft.net"},
-  	{server_smtp_port,25},
+	{server_smtp_port,25},
 	{server_smtp_max_connection,25},
 	{server_smtp_greeting,"ErlMail http://erlsoft.org (NO UCE)"},
 

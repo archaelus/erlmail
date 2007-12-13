@@ -51,94 +51,11 @@
 
 %% temp export; most likley private
 -export([open/1,close/1,check/1]).
--export([status/0,status/1]).
+-export([status/0,status/1,store/1,deliver/1,message_name/1]).
+-export([expand/2]).
 
 
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-
-
-%%% API
-
-
-select({UserName,DomainName}) -> gen_server:call(erlmail_store,{select,{UserName,DomainName}},10000).
-	
-
-
-
-
-%%%% Private Functions
-status() -> ok.
-status({MbxName,UserName,DomainName}) ->
-	?D({MbxName,UserName,DomainName}), 
-	ok.
-
-
-
-open(MailBoxName) ->
-	case check(MailBoxName) of
-		true   -> create(MailBoxName);
-		prmote -> promote(MailBoxName);
-		false  -> create(MailBoxName,open)
-	end.
-
-close(MailBoxName) -> drop(MailBoxName).
-
-
-check(MailBoxName) -> 
-	Fun = fun() ->
-		Open = mnesia:match_object(#message_store{mailbox = MailBoxName, state = open, _ = '_'}),
-		All = mnesia:match_object(#message_store{mailbox = MailBoxName, _ = '_'}),
-		[length(Open),length(All)]
-	end,
-	case mnesia:sync_transaction(Fun) of
-		{atomic,[0,0]}   -> false;
-		{atomic,[0,_]}   -> promote;
-		{atomic,[1,_]}   -> true;
-		{aborted,Reason} -> {error,Reason};
-		{error,Reason}   -> {error,Reason}
-	end.
-	
-
-promote(_MailBoxName) -> ok.
-
-create(MailBoxName) -> create(MailBoxName,active).
-create(MailBoxName,State) ->
-	Fun = fun() ->
-		mnesia:write(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = State}) 
-	end,
-	case mnesia:sync_transaction(Fun) of
-		{aborted,Reason} -> {error,Reason};
-		{error,Reason} -> {error,Reason};
-		{atomic,ok} -> {ok,State}
-	end.
-
-drop(MailBoxName) ->
-	Fun = fun() ->
-		case mnesia:match_object(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = '_'}) of
-			[#message_store{} = Store] -> mnesia:delete_object(Store) ;
-			_ -> error
-		end
-		
-	end,
-	case mnesia:sync_transaction(Fun) of
-		{aborted,Reason} -> {error,Reason};
-		{error,Reason} -> {error,Reason};
-		{atomic,error} -> {error,message_store_error};
-		{atomic,ok} -> ok
-	end.
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -230,6 +147,183 @@ init(_) ->
 terminate(_Reason,_State) -> 
 	erlmail_util:remove(message_store),
 	ok.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%% API
+
+
+deliver(#message{name = {MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
+	Store = store(message),
+	MIME = mine:decode(Message#message.message),
+	?D(Message),
+	ok.
+
+
+expand(Message,MIME) -> expand(Message,MIME,record_info(fields,message)).
+
+expand(Message,_MIME,[]) -> Message;
+expand(#message{from = []} = Message,MIME,[from | Rest]) ->
+	expand(Message#message{from = mime:get_header(from,MIME)},MIME,Rest);
+expand(#message{to = []} = Message,MIME,[to | Rest]) ->
+	expand(Message#message{to = mime:get_header(to,MIME)},MIME,Rest);
+expand(#message{cc = []} = Message,MIME,[cc | Rest]) ->
+	expand(Message#message{cc = mime:get_header(cc,MIME)},MIME,Rest);
+expand(#message{bcc = []} = Message,MIME,[bcc | Rest]) ->
+	expand(Message#message{bcc = mime:get_header(bcc,MIME)},MIME,Rest);
+expand(#message{size = 0} = Message,MIME,[size | Rest]) ->
+	expand(Message#message{size = length(Message#message.message)},MIME,Rest);
+expand(#message{flags = []} = Message,MIME,[flags | Rest]) ->
+	expand(Message#message{flags = [recent]},MIME,Rest);
+expand(#message{internaldate = []} = Message,MIME,[internaldate | Rest]) ->
+	expand(Message#message{internaldate={date(),time()}},MIME,Rest);
+expand(Message,MIME,[_Unknown | Rest]) ->
+	expand(Message,MIME,Rest).
+
+
+
+
+
+
+
+
+message_name(Args) ->
+	Store = store(message),
+	Store:message_name(Args).
+
+
+
+
+select({UserName,DomainName}) -> gen_server:call(erlmail_store,{select,{UserName,DomainName}},10000).
+	
+
+
+
+
+%%%% Private Functions
+status() -> ok.
+status({_UserName,_DomainName} = Name) ->
+	Store = store(user),
+	case Store:select(Name) of
+		User when is_record(User,user) -> {ok,User};
+		_Other -> {error,user_not_found}
+	end;
+status({MbxName,UserName,DomainName}) ->
+	?D({MbxName,UserName,DomainName}), 
+	ok.
+
+
+store(domain)        -> erlmail_util:get_app_env(store_type_domain,mnesia_store);
+store(user)          -> erlmail_util:get_app_env(store_type_user,mnesia_store);
+store(message)       -> erlmail_util:get_app_env(store_type_message,mnesia_store);
+store(mailbox_store) -> erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store).
+
+
+
+
+open(MailBoxName) ->
+	case check(MailBoxName) of
+		true   -> create(MailBoxName);
+		prmote -> promote(MailBoxName);
+		false  -> create(MailBoxName,open)
+	end.
+
+close(MailBoxName) -> drop(MailBoxName).
+
+
+check(MailBoxName) -> 
+	Fun = fun() ->
+		Open = mnesia:match_object(#message_store{mailbox = MailBoxName, state = open, _ = '_'}),
+		All = mnesia:match_object(#message_store{mailbox = MailBoxName, _ = '_'}),
+		[length(Open),length(All)]
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{atomic,[0,0]}   -> false;
+		{atomic,[0,_]}   -> promote;
+		{atomic,[1,_]}   -> true;
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason}   -> {error,Reason}
+	end.
+	
+
+promote(_MailBoxName) -> ok.
+
+create(MailBoxName) -> create(MailBoxName,active).
+create(MailBoxName,State) ->
+	Fun = fun() ->
+		mnesia:write(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = State}) 
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason};
+		{atomic,ok} -> {ok,State}
+	end.
+
+drop(MailBoxName) ->
+	Fun = fun() ->
+		case mnesia:match_object(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = '_'}) of
+			[#message_store{} = Store] -> mnesia:delete_object(Store) ;
+			_ -> error
+		end
+		
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason};
+		{atomic,error} -> {error,message_store_error};
+		{atomic,ok} -> ok
+	end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
