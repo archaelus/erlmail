@@ -172,7 +172,8 @@ terminate(_Reason,_State) ->
 deliver(#message{name = {MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
 	Store = store(message),
 	MIME = mine:decode(Message#message.message),
-	?D(Message),
+	NewMessage = expand(Message,MIME),
+	?D(NewMessage),
 	ok.
 
 
