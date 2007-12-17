@@ -34,7 +34,16 @@
 	{mnesia_table_domain, erlmail_domain},
 	{mnesia_table_user, erlmail_user},
 	{mnesia_table_message, erlmail_message},
-	{mnesia_table_mailbox_store, erlmail_mailbox_store}
+	{mnesia_table_mailbox_store, erlmail_mailbox_store},
+	
+	{antispam_rbl,false},
+	{antispam_rbl_list,[{spamcop,"bl.spamcop.net"}]},
+	{antispam_default_action,continue},
+	{antispam_pre_deliver_action,[]},
+	{antispam_post_deliver_action,[]}
+	
+	
+	
 	]}
  ]
 }.

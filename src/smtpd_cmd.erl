@@ -158,7 +158,15 @@ check_user({_UserName,_DomainName} = Name) ->
 
 store_message(Message,State) when is_binary(Message) -> store_message(binary_to_list(Message),State);
 store_message(Message,_State) when is_record(Message,message) ->
-	erlmail_store:deliver(Message);
+	case erlmail_antispam:pre_deliver(Message) of
+		{ok,NewMessage} -> 
+			erlmail_store:deliver(NewMessage),
+			case erlmail_antispam:post_deliver(Message) of
+				{ok,_M} -> ok;
+				{error,Reason} -> {error,Reason}
+			end;
+		{error,Reason} -> {error,Reason}
+	end;
 store_message(Message,State) ->
 	lists:map(fun(To) -> 
 		MessageName = erlmail_store:message_name(now()),
