@@ -39,7 +39,7 @@
 
 -export([encode/1,decode/1]).
 
--export([split/1,headers/1,split_multipart/2,get_header/2]).
+-export([split/1,headers/1,split_multipart/2,get_header/2,dec_addr/1]).
 
 
 
@@ -63,7 +63,7 @@ enc_header(MIME) -> enc_header(MIME,[]).
 
 enc_header([],Acc) -> lists:reverse(Acc);
 enc_header([{from,From}|Rest],Acc) ->
-	enc_header(Rest,[10,13,From,32,"From:"|Acc]);
+	enc_header(Rest,[10,13,enc_addr(From),32,"From:"|Acc]);
 enc_header([{to,To}|Rest],Acc) ->
 	enc_header(Rest,[10,13,enc_addr_list(To),32,"To:"|Acc]);
 enc_header([{cc,CC}|Rest],Acc) ->
@@ -124,6 +124,25 @@ decode(Message) ->
 
 
 
+dec_addrs(AddrList) ->
+	List = string:tokens(AddrList,[44]),
+	lists:map(fun(Addr) -> 
+		dec_addr(Addr)
+		end,List).
+
+dec_addr(Address) ->
+	case erlmail_util:rsplit_at(Address) of
+		{Email,[]} -> dec_addr2(Email,#addr{});
+		{Desc,Email} -> dec_addr2(Email,#addr{description = erlmail_util:unquote(Desc)})
+	end.
+
+dec_addr2(Address,Addr) ->
+	A = string:strip(string:strip(Address,left,60),right,62),
+	{UserName,DomainName} = erlmail_util:split_email(A),
+	Addr#addr{username = UserName,domainname = DomainName}.
+	
+
+
 
 %%-------------------------------------------------------------------------
 %% @spec (HeaderText::string()) -> HeaderList::list()
@@ -141,13 +160,19 @@ headers(HeaderText) ->
 %%-------------------------------------------------------------------------
 headers([H|T],Acc) ->
 	Pos = string:chr(H,58),
-	{HeaderString,Value} = lists:split(Pos,H),
-	Header = list_to_atom(http_util:to_lower(string:strip(HeaderString,right,58))),
+	{HeaderString,Val} = lists:split(Pos,H),
+	Value = case Header = list_to_atom(http_util:to_lower(string:strip(HeaderString,right,58))) of
+		from -> dec_addr(Val);
+		to   -> dec_addrs(Val);
+		cc   -> dec_addrs(Val);
+		bcc  -> dec_addrs(Val);
+		_ -> Val
+	end,
 	headers(T,[head_clean(Header,Value)|Acc]);
 headers([],Acc) -> lists:reverse(Acc).
 	
 
-
+head_clean(Key, #addr{} = Value) -> {Key,Value};
 head_clean(Key,Value) ->
 	{Key,strip(Value)}.
 

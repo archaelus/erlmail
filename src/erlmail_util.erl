@@ -44,6 +44,7 @@
 
 -export([split_email/1,combine_email/1,combine_email/2]).
 -export([create/4,join/1,remove/1,check/1,check/4]).
+-export([split_at/1,split_at/2,rsplit_at/1,rsplit_at/2,unquote/1]).
 -export([get_app_env/2]).
 
 
@@ -55,6 +56,49 @@ split_email(EmailAddress) ->
 		[UserName,DomainName] -> {UserName,DomainName};
 		_AnythingsElse -> {[],[]}
 	end.
+
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the first SPACE (chr(32))
+%% @end
+%%-------------------------------------------------------------------------
+split_at(String) -> split_at(String,32).
+%%-------------------------------------------------------------------------
+%% @spec (String::string(),Chr::char()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the first instace of Chr
+%% @end
+%%-------------------------------------------------------------------------
+split_at(String,Chr) -> 
+	case string:chr(String, Chr) of
+		0 -> {String,[]};
+		Pos -> 
+			case lists:split(Pos,String) of
+				{One,Two} -> {string:strip(One),Two};
+				Other -> Other
+			end
+	end.
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the last SPACE (chr(32))
+%% @end
+%%-------------------------------------------------------------------------
+rsplit_at(String) -> rsplit_at(String,32).
+%%-------------------------------------------------------------------------
+%% @spec (String::string(),Chr::char()) -> {string(),string()}
+%% @doc Splits the given string into two strings at the last instace of Chr
+%% @end
+%%-------------------------------------------------------------------------
+rsplit_at(String,Chr) -> 
+	case string:rchr(String, Chr) of
+		0 -> {String,[]};
+		Pos -> 
+			case lists:split(Pos,String) of
+				{One,Two} -> {string:strip(One),Two};
+				Other -> Other
+			end
+	end.
+
+
 
 combine_email([])                                 -> [];
 combine_email({[],[]})                            -> [];
@@ -87,7 +131,14 @@ get_app_env(Opt, Default) ->
     end.
 
 
-
+%%-------------------------------------------------------------------------
+%% @spec (String::string()) -> string()
+%% @doc Removes Double Quotes and white space from both sides of a string
+%% @end
+%%-------------------------------------------------------------------------
+unquote(String) -> 
+	S2 = string:strip(String,both,32),
+	string:strip(S2,both,34).
 
 
 

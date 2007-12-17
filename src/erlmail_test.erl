@@ -85,8 +85,9 @@ c(IP) ->
 	cmd(Fsm,logout),
 	ok.
 
-
-
+d() ->
+	Message = #message{name = {"MessageName",?USER,?DOMAIN}, message = m()},
+	erlmail_store:deliver(Message).
 
 e() -> 
 	Message = #message{message = m()},

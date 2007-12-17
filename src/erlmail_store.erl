@@ -171,9 +171,14 @@ terminate(_Reason,_State) ->
 
 deliver(#message{name = {MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
 	Store = store(message),
-	MIME = mine:decode(Message#message.message),
-	NewMessage = expand(Message,MIME),
-	?D(NewMessage),
+	MBStore = store(mailbox_store),
+	MBStore:ensure_inbox({UserName,DomainName}),
+	MailBox = MBStore:select({"INBOX",{UserName,DomainName}}),
+	MIME = mime:decode(Message#message.message),
+	NewMessage = expand(Message#message{uid = MailBox#mailbox_store.uidnext},MIME),
+	Store:insert(NewMessage),
+	MBStore:update(MailBox#mailbox_store{uidnext = MailBox#mailbox_store.uidnext + 1}),
+%	?D(NewMessage),
 	ok.
 
 
