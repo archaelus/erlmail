@@ -90,6 +90,7 @@ command(#imap_cmd{tag = Tag, cmd = logout = Command, data = []}, State) ->
 	imapd_util:out(Command, State),
 	imapd_resp:respond([#imap_resp{tag = '*', status = bye, info = "ErlMail terminating connection"},
 						#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
+	erlmail_store:close(),
 	gen_tcp:close(State#imapd_fsm.socket),
 	gen_fsm:send_all_state_event(self(),stop),
 	State;
@@ -119,17 +120,15 @@ command(#imap_cmd{tag = Tag, cmd = login = Command, data = []},  State) ->
 	imapd_util:out(Command, State),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = login = Command, data = {UserName,Password}}, 
+command(#imap_cmd{tag = Tag, cmd = login = Command, data = {EmailAddress,Password}}, 
 	    #imapd_fsm{state = not_authenticated, options = Options} = State) -> 
 	case lists:keysearch(logindisabled, 1, Options) of
 		{value, {logindisabled,true}} ->
 			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 			State;
 		_ ->
-			imapd_util:out(Command,UserName,State),
-			Store = gen_store:lookup(user),
-			User = Store:select(erlmail_util:split_email(UserName)),
-			case User of
+			imapd_util:out(Command,EmailAddress,State),
+			case erlmail_store:select(erlmail_util:split_email(EmailAddress)) of
 				#user{password = Password} = User when Password /= [] -> 
 					imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 					State#imapd_fsm{state = authenticated, user = User};
@@ -159,9 +158,7 @@ command(#imap_cmd{tag = Tag, cmd = select = Command},
 command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command, MailBoxName, State),
-	Store = gen_store:lookup(mailbox_store),
-	MailBoxStore = Store:select({MailBoxName, User#user.name}),
-	case MailBoxStore of
+	case erlmail_store:select({MailBoxName, User#user.name}) of
 		MailBoxStore when is_record(MailBoxStore, mailbox_store) ->
 			% @todo: open mailbox in mailbox store or mark as active for this client. Set RW = true
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
@@ -199,9 +196,7 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command},
 command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command, MailBoxName, State),
-	Store = gen_store:lookup(mailbox_store),
-	MailBoxStore = Store:select({MailBoxName, User#user.name}),
-	case MailBoxStore of
+	case erlmail_store:select({MailBoxName, User#user.name}) of
 		MailBoxStore when is_record(MailBoxStore, mailbox_store) ->
 			MailBox = imapd_util:mailbox_info(MailBoxStore),
 			% @todo Clean up Flag processing - figure out where to store data
@@ -234,18 +229,17 @@ command(#imap_cmd{tag = Tag, cmd = create = Command},
 	imapd_util:out(Command,State),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = create = Command, data = Data},
+command(#imap_cmd{tag = Tag, cmd = create = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
-	imapd_util:out(Command,Data,State),
-	Store = gen_store:lookup(mailbox_store),
-	case Store:select({Data,User#user.name}) of
+	imapd_util:out(Command,MailBoxName,State),
+	case erlmail_store:select({MailBoxName,User#user.name}) of
 		[] -> 
 			% @todo CREATE Check for and clear trailing hierarchy seprator
 			% @todo CREATE parent mailboxes
 			% @todo CREATE UIDVALIDITY for mailbox
 			% @todo CREATE check previosuly deleted forlder info for MAX UID
 			{UserName,DomainName} = User#user.name,
-			Store:insert(#mailbox_store{name={Data,UserName,DomainName}}),
+			erlmail_store:insert(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
 			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
@@ -267,8 +261,7 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command},
 command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
-	Store = gen_store:lookup(mailbox_store),
-	case Store:select({MailBoxName,User#user.name}) of
+	case erlmail_store:select({MailBoxName,User#user.name}) of
 		[] ->  imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		#mailbox_store{name = {"INBOX",_,_}} -> 
 			 imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
@@ -278,8 +271,7 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 			% @todo DELETE check for \noselect flag; error
 			% @todo DELETE check for sub folders; remove mail and set \noselect leave folder
 			% @todo DELETE maintain list of Max UID for deleted folders incase of recreation
-			?D({delete,MailBoxName,UserName,DomainName}),
-			Store:delete(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
+			erlmail_store:delete(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
@@ -304,9 +296,8 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command},
 command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,{Src,Dst},State),
-	Store = gen_store:lookup(mailbox_store),
-	SrcMB = Store:select({string:strip(Src),User#user.name}),
-	DstMB = Store:select({string:strip(Dst),User#user.name}),
+	SrcMB = erlmail_store:select({string:strip(Src),User#user.name}),
+	DstMB = erlmail_store:select({string:strip(Dst),User#user.name}),
 	case {SrcMB,DstMB} of
 		{[],_} -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		{_,DstMB} when is_record(DstMB,mailbox_store) -> 
@@ -316,10 +307,10 @@ command(#imap_cmd{tag = Tag, cmd = rename = Command, data = {Src,Dst}},
 			% @todo RENAME create any parent folders
 			% @todo RENAME maintain list of Max UID for renamed folders incase of recreation
 			% @todo RENAME INBOX special case. Move Mail, but do not delete INBOX. Leave subfolders alone
-			{_,UserName,DomainName} = SrcMB#mailbox_store.name,
+			{_SrcName,UserName,DomainName} = SrcMB#mailbox_store.name,
 			NewMB = SrcMB#mailbox_store{name = {Dst,UserName,DomainName}},
-			Store:insert(NewMB),
-			Store:delete(SrcMB),
+			erlmail_store:insert(NewMB),
+			erlmail_store:delete(SrcMB),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> 	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
@@ -340,12 +331,11 @@ command(#imap_cmd{tag = Tag, cmd = subscribe = Command},
 command(#imap_cmd{tag = Tag, cmd = subscribe = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
-	Store = gen_store:lookup(mailbox_store),
-	case Store:select({MailBoxName,User#user.name}) of
+	case erlmail_store:select({MailBoxName,User#user.name}) of
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) ->
 			NewMailBox = MailBox#mailbox_store{subscribed = true},
-			Store:update(NewMailBox),
+			erlmail_store:update(NewMailBox),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
@@ -365,12 +355,11 @@ command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command},
 command(#imap_cmd{tag = Tag, cmd = unsubscribe = Command, data = MailBoxName},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
-	Store = gen_store:lookup(mailbox_store),
-	case Store:select({MailBoxName,User#user.name}) of
+	case erlmail_store:select({MailBoxName,User#user.name}) of
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) ->
 			NewMailBox = MailBox#mailbox_store{subscribed = false},
-			Store:update(NewMailBox),
+			erlmail_store:update(NewMailBox),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,

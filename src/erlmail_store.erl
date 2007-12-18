@@ -47,11 +47,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 %% API
--export([select/1]).
+-export([deliver/1,message_name/1]).
+-export([select/1,insert/1,update/1,delete/1]).
 
 %% temp export; most likley private
--export([open/1,close/1,check/1]).
--export([status/0,status/1,store/1,deliver/1,message_name/1]).
+-export([open/1,close/0,close/1,check/1]).
+-export([status/0,status/1,store/1]).
 -export([expand/2]).
 
 
@@ -169,7 +170,7 @@ terminate(_Reason,_State) ->
 %%% API
 
 
-deliver(#message{name = {MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
+deliver(#message{name = {_MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
 	Store = store(message),
 	MBStore = store(mailbox_store),
 	MBStore:ensure_inbox({UserName,DomainName}),
@@ -214,12 +215,26 @@ message_name(Args) ->
 	Store:message_name(Args).
 
 
+insert(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
+	Store = store(mailbox_store),
+	Store:insert(MailBoxStore).
 
 
-select({UserName,DomainName}) -> gen_server:call(erlmail_store,{select,{UserName,DomainName}},10000).
-	
+select({_MailBoxName,{_UserName,_DomainName}} = MailBox) -> 
+	Store = store(mailbox_store),
+	Store:select(MailBox);
+select({_UserName,_DomainName} = User) -> 
+	Store = store(user),
+	Store:select(User).
+
+update(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
+	Store = store(mailbox_store),
+	Store:update(MailBoxStore).
 
 
+delete(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
+	Store = store(mailbox_store),
+	Store:delete(MailBoxStore).
 
 
 %%%% Private Functions
@@ -250,7 +265,9 @@ open(MailBoxName) ->
 		false  -> create(MailBoxName,open)
 	end.
 
+close() -> drop().
 close(MailBoxName) -> drop(MailBoxName).
+
 
 
 check(MailBoxName) -> 
@@ -281,6 +298,26 @@ create(MailBoxName,State) ->
 		{atomic,ok} -> {ok,State}
 	end.
 
+
+
+drop() ->
+	Fun = fun() ->
+		case mnesia:match_object(#message_store{client = self(), _ = '_'}) of
+			[#message_store{} = _H|_T] = List -> 
+				lists:map(fun(Store) -> 
+					mnesia:delete_object(Store)
+					end, List);
+			_ -> error
+		end
+		
+	end,
+	case mnesia:sync_transaction(Fun) of
+		{aborted,Reason} -> {error,Reason};
+		{error,Reason} -> {error,Reason};
+		{atomic,error} -> {error,message_store_error};
+		{atomic,ok} -> ok
+	end.
+	
 drop(MailBoxName) ->
 	Fun = fun() ->
 		case mnesia:match_object(#message_store{client = self(), server = node(), mailbox = MailBoxName, state = '_'}) of
