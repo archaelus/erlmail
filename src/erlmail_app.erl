@@ -39,9 +39,18 @@
 -behaviour(application).
 
 -export([start/2,stop/1]).
-
+%%-------------------------------------------------------------------------
+%% @spec (Type::any(),Args::any()) -> any()
+%% @doc Starts the erlmail application. The variables Type and Args are 
+%% currently unused.
+%% @end
+%%-------------------------------------------------------------------------
 start(_Type, _Args) ->
 	erlmail_sup:start_link().
-
+%%-------------------------------------------------------------------------
+%% @spec (State::any()) -> ok
+%% @doc Stops the erlmail application. The variable State is currently unused
+%% @end
+%%-------------------------------------------------------------------------
 stop(_State) -> ok.
 

@@ -39,9 +39,30 @@
 
 -export([dnsbl/1,pre_deliver/1,post_deliver/1]).
 
-
+%%-------------------------------------------------------------------------
+%% @spec (IP::tuple()) -> {ok,Responses::list()}
+%% @doc Takes an IP address and processes it through a list of
+%% DNS blackhole lists. Each respones is a tuple key/value pair that the 
+%% key is the name of hte DNS blackhole list and the value is a boolean,
+%% stating if the IP address is in the blackhole list (true) or not (false)
+%% @end
+%%-------------------------------------------------------------------------
 dnsbl(_IP) -> {ok,[]}.
+
+%%-------------------------------------------------------------------------
+%% @spec (Message::record()) -> {ok,NewMessage::record()}
+%% @doc Takes a message and processes it before it is delivered to the 
+%% message store.
+%% @end
+%%-------------------------------------------------------------------------
 pre_deliver(Message) -> {ok,Message}.
+
+%%-------------------------------------------------------------------------
+%% @spec (Message::record()) -> {ok,NewMessage::record()}
+%% @doc Takes a message and processes it after it is delivered to the 
+%% message store.
+%% @end
+%%-------------------------------------------------------------------------
 post_deliver(Message) -> {ok,Message}.
 
 
