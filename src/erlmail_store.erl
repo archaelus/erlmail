@@ -48,10 +48,11 @@
 
 %% API
 -export([deliver/1,message_name/1]).
--export([select/1,insert/1,update/1,delete/1]).
+-export([select/1,insert/1,update/1,delete/1,mlist/3]).
+-export([check/0,check/1]).
 
 %% temp export; most likley private
--export([open/1,close/0,close/1,check/1]).
+-export([open/1,close/0,close/1,check_store/1]).
 -export([status/0,status/1,store/1]).
 -export([expand/2]).
 
@@ -129,7 +130,7 @@ handle_info(_Info,State) ->
 
 init(_) -> 
     process_flag(trap_exit, true),
-	erlmail_util:check(message_store,message_store,set,[server,mailbox]),
+	erlmail_util:check_store(message_store,message_store,set,[server,mailbox]),
 	System  = erlmail_util:get_app_env(store_type_system,mnesia_store),
 	Domain  = erlmail_util:get_app_env(store_type_domain,mnesia_store),
 	User    = erlmail_util:get_app_env(store_type_user,mnesia_store),
@@ -206,9 +207,17 @@ expand(Message,MIME,[_Unknown | Rest]) ->
 
 
 
+mlist(MailBoxName,User,Boolean) ->
+	Store = store(mailbox_store),
+	Store:mlist(MailBoxName,User,Boolean).
 
 
-
+check() -> check([domain,user,message,mailbox_store]).
+check([]) -> ok;
+check([H|T]) ->
+	Store = store(H),
+	Store:check(H),
+	check(T).
 
 message_name(Args) ->
 	Store = store(message),
@@ -219,7 +228,9 @@ insert(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
 	Store = store(mailbox_store),
 	Store:insert(MailBoxStore).
 
-
+select(MailBox) when is_record(MailBox,mailbox_store) ->
+	{MailBoxName,UserName,DomainName} = MailBox#mailbox_store.name,
+	select({MailBoxName,{UserName,DomainName}});
 select({_MailBoxName,{_UserName,_DomainName}} = MailBox) -> 
 	Store = store(mailbox_store),
 	Store:select(MailBox);
@@ -259,7 +270,7 @@ store(mailbox_store) -> erlmail_util:get_app_env(store_type_mailbox_store,mnesia
 
 
 open(MailBoxName) ->
-	case check(MailBoxName) of
+	case check_store(MailBoxName) of
 		true   -> create(MailBoxName);
 		prmote -> promote(MailBoxName);
 		false  -> create(MailBoxName,open)
@@ -270,7 +281,7 @@ close(MailBoxName) -> drop(MailBoxName).
 
 
 
-check(MailBoxName) -> 
+check_store(MailBoxName) -> 
 	Fun = fun() ->
 		Open = mnesia:match_object(#message_store{mailbox = MailBoxName, state = open, _ = '_'}),
 		All = mnesia:match_object(#message_store{mailbox = MailBoxName, _ = '_'}),

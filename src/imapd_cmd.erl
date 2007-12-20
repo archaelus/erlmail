@@ -379,13 +379,9 @@ command(#imap_cmd{tag = Tag, cmd = list = Command},
 command(#imap_cmd{tag = Tag, cmd = list = Command, data = {_Reference,MailBoxName}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	% @todo incorparete reference name. Simplier not to use at first
-%	?D({Reference,MailBoxName}),
-	Store = gen_store:lookup(mailbox_store),
 	Heirachy = imapd_util:heirachy_char(),
-%	?D(Heirachy),
-	case Store:mlist(MailBoxName,User#user.name,false) of
+	case erlmail_store:mlist(MailBoxName,User#user.name,false) of
 		List when is_list(List) -> 
-%			?D(List),
 			RespList = lists:map(fun(Name) -> 
 				Info = {Command,Heirachy,Name},
 				Data = {Command,[]},
@@ -411,13 +407,11 @@ command(#imap_cmd{tag = Tag, cmd = lsub = Command},
 	imapd_util:out(Command,State),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {Reference,MailBoxName}},
+command(#imap_cmd{tag = Tag, cmd = lsub = Command, data = {_Reference,MailBoxName}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	% @todo incorparete reference name. Simplier not to use at first
-	?D({Reference,MailBoxName}),
-	Store = gen_store:lookup(mailbox_store),
 	Heirachy = imapd_util:heirachy_char(),
-	case Store:mlist(MailBoxName,User#user.name,true) of
+	case erlmail_store:mlist(MailBoxName,User#user.name,true) of
 		List when is_list(List) -> 
 			RespList = lists:map(fun(Name) -> 
 				Info = {Command,Heirachy,Name},
@@ -445,8 +439,7 @@ command(#imap_cmd{tag = Tag, cmd = status = Command},
 command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}},
 		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
-	Store = gen_store:lookup(mailbox_store),
-	case Store:select({string:strip(MailBoxName),User#user.name}) of
+	case erlmail_store:select({string:strip(MailBoxName),User#user.name}) of
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) -> 
 			StatusFlags = imapd_util:status_flags(Flags),
@@ -476,11 +469,7 @@ command(#imap_cmd{tag = Tag, cmd = check = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = check = Command, data = []},#imapd_fsm{state = selected} = State) -> 
 	imapd_util:out(Command,State),
-	{Domain,User,Message,MailBox} = gen_store:lookup(all),
-	Domain:check(domain),
-	User:check(user),
-	Message:check(message),
-	MailBox:check(mailbox_store),
+	erlmail_store:check(),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = check = Command}, State) -> 
@@ -501,9 +490,7 @@ command(#imap_cmd{tag = Tag, cmd = close = Command, data = []},
 	imapd_util:out(Command,State),
 	case State#imapd_fsm.mailbox_rw of
 		true ->
-			Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-			{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-			MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+			MailBox = erlmail_store:select(Selected),
 			imapd_util:expunge(MailBox);
 		false -> ok
 	end,
@@ -524,11 +511,9 @@ command(#imap_cmd{tag = Tag, cmd = expunge = Command},
 	State;
 command(#imap_cmd{tag = Tag, cmd = expunge = Command, data = []}, #imapd_fsm{mailbox = Selected} = State) -> 
 	imapd_util:out(Command,State),
-	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-	{MailBoxName,UserName,DomainName} = Selected#mailbox_store.name,
-	MailBox = Store:select({MailBoxName,{UserName,DomainName}}),
+	MailBox = erlmail_store:select(Selected),
 	{NewMailBox,RespList} = imapd_util:expunge(MailBox),
-	Store:update(NewMailBox),
+	erlmail_store:update(NewMailBox),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox = NewMailBox};
 command(#imap_cmd{tag = Tag, cmd = expunge = Command}, State) -> 
@@ -578,8 +563,7 @@ command(#imap_cmd{tag = Tag, cmd = store = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = store = Command, data = {Seq,Action,Flags}},#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
 	imapd_util:out(Command,{Seq,Action,Flags},State),
-	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-	Current = Store:select(Selected),
+	Current = erlmail_store:select(Selected),
 	Messages = imapd_util:seq_message_names(Seq,Current),
 	RespList = imapd_util:store(Messages,State#imapd_fsm{mailbox=Current},Action,Flags),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State),
@@ -599,9 +583,8 @@ command(#imap_cmd{tag = Tag, cmd = copy = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = copy = Command, data = {Seq,MailBoxName}},#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
 	imapd_util:out(Command,{Seq,MailBoxName},State),
-	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-	Current = Store:select(Selected),
-	Dest = Store:select({MailBoxName,User#user.name}),
+	Current = erlmail_store:select(Selected),
+	Dest = erlmail_store:select({MailBoxName,User#user.name}),
 	case Dest of
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		Dest when is_record(Dest,mailbox_store) ->
@@ -639,9 +622,8 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {copy, UIDSeq, DestMailBox}},
 	#imapd_fsm{state = selected, mailbox = Selected, user = User} = State) -> 
 	imapd_util:out(Command,{copy, UIDSeq, DestMailBox},State),
-	Store = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-	Current = Store:select(Selected),
-	Dest = Store:select({DestMailBox,User#user.name}),
+	Current = erlmail_store:select(Selected),
+	Dest = erlmail_store:select({DestMailBox,User#user.name}),
 	case Dest of
 		[] -> 
 			imapd_resp:respond([#imap_resp{tag = Tag, status = no, code = trycreate}],Tag,State);
