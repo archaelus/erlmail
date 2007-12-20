@@ -130,13 +130,13 @@ handle_info(_Info,State) ->
 
 init(_) -> 
     process_flag(trap_exit, true),
-	erlmail_util:check_store(message_store,message_store,set,[server,mailbox]),
-	System  = erlmail_util:get_app_env(store_type_system,mnesia_store),
-	Domain  = erlmail_util:get_app_env(store_type_domain,mnesia_store),
-	User    = erlmail_util:get_app_env(store_type_user,mnesia_store),
-	Message = erlmail_util:get_app_env(store_type_message,mnesia_store),
-	Mailbox = erlmail_util:get_app_env(store_type_mailbox_store,mnesia_store),
-	State = #erlmail_store{system = System, domain = Domain, user = User, message = Message, mailbox = Mailbox},
+	erlmail_util:check(message_store,message_store,set,[server,mailbox]),
+	State = #erlmail_store{
+		system = store(system), 
+		domain = store(domain),
+		user = store(user),
+		message = store(message),
+		mailbox = store(mailbox_store)},
 	{ok, State}.
 %%-------------------------------------------------------------------------
 %% @spec (Reason, State) -> any
@@ -261,6 +261,7 @@ status({MbxName,UserName,DomainName}) ->
 	ok.
 
 
+store(system)        -> erlmail_util:get_app_env(store_type_system,mnesia_store);
 store(domain)        -> erlmail_util:get_app_env(store_type_domain,mnesia_store);
 store(user)          -> erlmail_util:get_app_env(store_type_user,mnesia_store);
 store(message)       -> erlmail_util:get_app_env(store_type_message,mnesia_store);
