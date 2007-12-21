@@ -443,13 +443,11 @@ command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}}
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) -> 
 			StatusFlags = imapd_util:status_flags(Flags),
-			?D(StatusFlags),
 			MailBoxInfo = imapd_util:mailbox_info(MailBox,StatusFlags),
-			?D(MailBoxInfo),
 			StatusInfo  = imapd_util:status_info(MailBoxInfo,StatusFlags),
-			Status = {status,MailBoxName,StatusInfo},
 			% @todo Process each flag and build data to return
-			imapd_resp:respond([#imap_resp{tag = '*', cmd = Command, data = Status},#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
+			imapd_resp:respond([#imap_resp{tag = '*', cmd = Command, data = {status,MailBoxName,StatusInfo}},
+							    #imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
 	State;

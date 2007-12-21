@@ -175,6 +175,7 @@ envelope(MIME, [H|T], Bin) ->
 
 
 string_to_address(String) -> 
+	?D(String),
 	AddressList = imapd_util:parse_addresses(String),
 	Addresses = lists:map(fun(A) -> 
 		[40,

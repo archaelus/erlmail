@@ -37,6 +37,7 @@
 -author('sjackson@simpleenigma.com').
 -include("../include/imap.hrl").
 -include("../include/erlmail.hrl").
+-include("../include/mime.hrl").
 
 
 -export([clean/1,copy/3,expunge/1]).
@@ -372,10 +373,13 @@ parse(Line,State) ->
 
 
 
-
+parse_addresses(#addr{} = Addr) -> parse_addresses([Addr],[]);
+parse_addresses([#addr{} = _H |_Rest] = List) -> parse_addresses(List,[]);
 parse_addresses(String) -> parse_addresses(string:tokens(String,[44]),[]).
 
 parse_addresses([],Acc) -> lists:reverse(Acc);
+parse_addresses([#addr{} = H|T],Acc) ->
+	parse_addresses(T,[#address{addr_name=H#addr.description, addr_mailbox = H#addr.username, addr_host = H#addr.domainname} | Acc]);
 parse_addresses([H|T],Acc) ->
 	case regexp:split(H,"[<>@\"]") of
 		{ok,[_,PersonalName,MailBoxName,HostName,_]} -> 
