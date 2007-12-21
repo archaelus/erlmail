@@ -39,7 +39,7 @@
 -behavior(gen_store).
 
 -export([create/1,drop/1,select/1,select/2,insert/1,delete/1,update/1,message_name/1]).
--export([list/0,list/1,check/1,unseen/1,recent/1,mlist/3]).
+-export([list/0,list/1,check/1,mlist/3]).
 -export([deliver/1,ensure_inbox/1]).
 
 %%-------------------------------------------------------------------------
@@ -124,13 +124,6 @@ message_name(Args) -> gen_store:message_name(Args).
 mlist(_MailBoxName,{_UserName,_DomainName},_Subscribed) -> undefined.
 
 %%-------------------------------------------------------------------------
-%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
-%% @doc Generates a list of message names that have the \Recent flag set
-%% @end
-%%-------------------------------------------------------------------------
-recent({_MailBoxName,_UserName,_DomainName}) -> undefined.
-
-%%-------------------------------------------------------------------------
 %% @spec (Name::any()) -> ok | undefined | {error,string()}
 %% @doc  Retrives Record from the correct store.
 %% @end
@@ -144,13 +137,6 @@ select(_) -> undefined.
 %% @end
 %%-------------------------------------------------------------------------
 select(_,_) -> undefined.
-
-%%-------------------------------------------------------------------------
-%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
-%% @doc Generates a list of message names that have the \Unseen flag set
-%% @end
-%%-------------------------------------------------------------------------
-unseen({_MailBoxName,_UserName,_DomainName}) -> undefined.
 
 %%-------------------------------------------------------------------------
 %% @spec (Record::tuple()) -> ok | undefined | {error,string()}

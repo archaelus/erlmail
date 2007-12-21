@@ -89,7 +89,6 @@ copy(Dest,Messages,#imapd_fsm{user = User} = _State) ->
 			uidnext = MailBox#mailbox_store.uidnext + 1}
 		end,Dest,Messages),
 	MailBoxStore:update(NewDest),
-	?D(NewDest),
 	NewDest.
 
 %%-------------------------------------------------------------------------
@@ -197,7 +196,6 @@ list_to_seq([H],_,Acc) when is_integer(H) ->
 list_to_seq([H|[I|_] = T],Start,Acc) when H == I - 1, Start == 0 ->
 	list_to_seq(T,H,Acc);
 list_to_seq([H|[I] = _T],Start,Acc) when H == I - 1, is_integer(I) ->
-	?D({Start,H,I}),
 	String = integer_to_list(Start) ++ ":" ++ integer_to_list(I),
 	list_to_seq([],Start,[String|Acc]);
 list_to_seq([H|[I|_J] = T],Start,Acc) when H == I - 1 ->
@@ -255,27 +253,23 @@ mailbox_info(MailBox,{UserName,DomainName}) -> mailbox_info(MailBox,{UserName,Do
 mailbox_info(MailBox,{UserName,DomainName},all) -> mailbox_info(MailBox,{UserName,DomainName},[exists,messages,unseen,recent,flags,permanentflags]);
 
 mailbox_info(MailBox,{UserName,DomainName},[exists|T]) ->
-	Store =  erlmail_util:get_app_env(store_type_message,mnesia_store),
-	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
+	case erlmail_store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
 		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
 		MailBoxStore -> mailbox_info(MailBox#mailbox{exists=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[messages|T]) ->
-	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
-	case Store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
+	case erlmail_store:select({MailBox#mailbox.name,{UserName,DomainName}}) of
 		[] -> mailbox_info(MailBox,{UserName,DomainName},T);
 		MailBoxStore -> mailbox_info(MailBox#mailbox{messages=length(MailBoxStore#mailbox_store.messages)},{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[unseen|T]) ->
-	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
-	case Store:unseen({MailBox#mailbox.name,UserName,DomainName}) of
+	case erlmail_store:unseen({MailBox#mailbox.name,UserName,DomainName}) of
 		{_Seen,Unseen} ->  mailbox_info(MailBox#mailbox{unseen=length(Unseen)},{UserName,DomainName},T);
 		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[recent|T]) ->
-	Store = erlmail_util:get_app_env(store_type_message,mnesia_store),
-	case Store:recent({MailBox#mailbox.name,UserName,DomainName}) of
-		Recent when is_list(Recent) ->  mailbox_info(MailBox#mailbox{recent=length(Recent)},{UserName,DomainName},T);
+	case erlmail_store:recent({MailBox#mailbox.name,UserName,DomainName}) of
+		{Recent,_NotRecent} when is_list(Recent) ->  mailbox_info(MailBox#mailbox{recent=length(Recent)},{UserName,DomainName},T);
 		_ -> mailbox_info(MailBox,{UserName,DomainName},T)
 	end;
 mailbox_info(MailBox,{UserName,DomainName},[flags|T]) ->
@@ -285,7 +279,6 @@ mailbox_info(MailBox,{UserName,DomainName},[flags|T]) ->
 
 
 mailbox_info(MailBox,{UserName,DomainName},[_H|T]) ->
-	?D(_H),
 	mailbox_info(MailBox,{UserName,DomainName},T);
 
 mailbox_info(MailBox,{_UserName,_DomainName},[]) -> MailBox.
@@ -536,7 +529,6 @@ re_split(String) -> re_split(String,"^(\"[^\"]*\")",32,34).
 %% @end
 %%-------------------------------------------------------------------------
 re_split(String,RegExp,Space,Quote) ->
-	?D(String),
 	{One,Two} = case string:chr(String, Space) of
 		0 -> {String,[]};
 		Pos -> 
@@ -549,10 +541,8 @@ re_split(String,RegExp,Space,Quote) ->
 				_ -> 
 					case regexp:match(String,RegExp) of
 						{match,Start,Length} when Start + Length >= length(String) -> 
-							?D({Start,Length}),
 							lists:split(Pos,String);
 						{match,Start,Length} when Start < Pos -> 
-							?D({Start,Length}),
 							case lists:prefix([34,34],String) of
 								true -> 
 									{_O,T} = lists:split(3,String),
@@ -585,7 +575,6 @@ send(Resp,State) when is_record(Resp,imap_resp)  -> send(response(Resp),State);
 send([#imap_resp{}|_Rest] = RespList,State) when is_list(RespList) ->
 	Msg = lists:flatten(lists:map(fun(R) -> 
 		M = imapd_util:response(R#imap_resp{pid= [], timestamp = []}), 
-		?D(M),
 		[M,13,10] 
 		end,RespList)),
 	send(Msg,State);

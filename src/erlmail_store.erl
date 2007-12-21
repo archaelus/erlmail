@@ -49,7 +49,7 @@
 %% API
 -export([deliver/1,message_name/1]).
 -export([select/1,insert/1,update/1,delete/1,mlist/3]).
--export([check/0,check/1]).
+-export([check/0,check/1,recent/1,unseen/1]).
 
 %% temp export; most likley private
 -export([open/1,close/0,close/1,check_store/1]).
@@ -171,7 +171,7 @@ terminate(_Reason,_State) ->
 %%% API
 
 
-deliver(#message{name = {_MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
+deliver(#message{name = {MessageName,UserName,DomainName}} = Message) when is_record(Message,message) ->
 	Store = store(message),
 	MBStore = store(mailbox_store),
 	MBStore:ensure_inbox({UserName,DomainName}),
@@ -179,7 +179,9 @@ deliver(#message{name = {_MessageName,UserName,DomainName}} = Message) when is_r
 	MIME = mime:decode(Message#message.message),
 	NewMessage = expand(Message#message{uid = MailBox#mailbox_store.uidnext},MIME),
 	Store:insert(NewMessage),
-	MBStore:update(MailBox#mailbox_store{uidnext = MailBox#mailbox_store.uidnext + 1}),
+	MBStore:update(MailBox#mailbox_store{
+		uidnext = MailBox#mailbox_store.uidnext + 1,
+		messages = lists:usort([MessageName | MailBox#mailbox_store.messages])}),
 %	?D(NewMessage),
 	ok.
 
@@ -347,12 +349,33 @@ drop(MailBoxName) ->
 
 
 
+%%-------------------------------------------------------------------------
+%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
+%% @doc Generates a list of message names that have the \Recent flag set
+%% @end
+%%-------------------------------------------------------------------------
+recent({MailBoxName,UserName,DomainName}) ->
+	MailBoxStore = store(mailbox_store),
+	MessageStore = store(message),
+	MailBox = MailBoxStore:select({MailBoxName,{UserName,DomainName}}),
+	lists:partition(fun(MessageName) -> 
+		Message = MessageStore:select({MessageName,UserName,DomainName}),
+		lists:member(recent,Message#message.flags)
+		end,MailBox#mailbox_store.messages).
 
-
-
-
-
-
+%%-------------------------------------------------------------------------
+%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
+%% @doc Generates a list of message names that have the \Unseen flag set
+%% @end
+%%-------------------------------------------------------------------------
+unseen({MailBoxName,UserName,DomainName}) -> 
+	MailBoxStore = store(mailbox_store),
+	MessageStore = store(message),
+	MailBox = MailBoxStore:select({MailBoxName,{UserName,DomainName}}),
+	lists:partition(fun(MessageName) -> 
+		Message = MessageStore:select({MessageName,UserName,DomainName}),
+		lists:member(seen,Message#message.flags)
+		end,MailBox#mailbox_store.messages).	
 
 
 

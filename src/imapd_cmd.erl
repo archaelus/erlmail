@@ -48,7 +48,7 @@
 %%-------------------------------------------------------------------------
 command(#imapd_fsm{line = Line} = State) -> 
 	Command = imapd_util:parse(Line,State),
-	io:format("Command: ~p~nPID: ~p~n",[Command,self()]),
+	io:format("Command: ~p~n",[Command]),
 	command(Command,State).
 
 
@@ -443,7 +443,9 @@ command(#imap_cmd{tag = Tag, cmd = status = Command, data = {MailBoxName,Flags}}
 		[] -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBox when is_record(MailBox,mailbox_store) -> 
 			StatusFlags = imapd_util:status_flags(Flags),
+			?D(StatusFlags),
 			MailBoxInfo = imapd_util:mailbox_info(MailBox,StatusFlags),
+			?D(MailBoxInfo),
 			StatusInfo  = imapd_util:status_info(MailBoxInfo,StatusFlags),
 			Status = {status,MailBoxName,StatusInfo},
 			% @todo Process each flag and build data to return

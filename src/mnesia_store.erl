@@ -40,7 +40,7 @@
 
 % Behavior Exports
 -export([create/1,drop/1,select/1,select/2,insert/1,delete/1,update/1,message_name/1]).
--export([list/0,list/1,check/1,unseen/1,recent/1,mlist/3]).
+-export([list/0,list/1,check/1,mlist/3]).
 -export([deliver/1,ensure_inbox/1]).
 
 % Store Specific Exports
@@ -304,29 +304,6 @@ mlist(MailBoxName,{UserName,DomainName},Subscribed) ->
 	end.
 
 %%-------------------------------------------------------------------------
-%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
-%% @doc Generates a list of message names that have the \Recent flag set
-%% @end
-%%-------------------------------------------------------------------------
-recent({MailBoxName,UserName,DomainName}) -> 
-	MailBoxTableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
-	MessageTableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
-	F = fun() ->
-		[MailBox] = mnesia:read({MailBoxTableName,{MailBoxName,UserName,DomainName}}),
-		lists:foldl(fun(MessageName,Recent) -> 
-			[Message] = mnesia:read({MessageTableName,{MessageName,UserName,DomainName}}),
-			case lists:member(recent,Message#message.flags) of
-				true -> [MessageName|Recent];
-				false -> Recent
-			end
-		end,[],MailBox#mailbox_store.messages)
-	end,
-	case mnesia:sync_transaction(F) of
-		{atomic,Results} -> Results;
-		{aborted,Reason} -> {error,Reason}
-	end.
-
-%%-------------------------------------------------------------------------
 %% @spec (Name::any()) -> ok | undefined | {error,string()}
 %% @doc  Retrives Record from the correct store.
 %% @end
@@ -354,28 +331,7 @@ select(TableName,Key) ->
 		{atomic,RecordList} when is_list(RecordList) -> RecordList;
 		{aborted,Reason} -> {error,Reason}
 	end.
-%%-------------------------------------------------------------------------
-%% @spec ({MailBoxName::string(),UserName::string(),DomainName::string()}) -> list() | {error,Reason}
-%% @doc Generates a list of message names that have the \Unseen flag set
-%% @end
-%%-------------------------------------------------------------------------
-unseen({MailBoxName,UserName,DomainName}) -> 
-	MailBoxTableName = erlmail_util:get_app_env(mnesia_table_mailbox_store,erlmail_mailbox_store),
-	MessageTableName = erlmail_util:get_app_env(mnesia_table_message,erlmail_message),
-	F = fun() ->
-		[MailBox] = mnesia:read({MailBoxTableName,{MailBoxName,UserName,DomainName}}),
-		lists:foldl(fun(MessageName,{S,U}) -> 
-			[Message] = mnesia:read({MessageTableName,{MessageName,UserName,DomainName}}),
-			case lists:member(seen,Message#message.flags) of
-				true -> {[MessageName|S],U};
-				false -> {S,[MessageName|U]}
-			end
-		end,{[],[]},MailBox#mailbox_store.messages)
-	end,
-	case mnesia:sync_transaction(F) of
-		{atomic,Results} -> Results;
-		{aborted,Reason} -> {error,Reason}
-	end.
+
 
 %%-------------------------------------------------------------------------
 %% @spec (Record::tuple()) -> ok | undefined | {error,string()}

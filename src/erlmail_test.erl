@@ -51,8 +51,8 @@
 
 
 s() ->
-	MailBoxName = {?MAILBOX,?USER,?DOMAIN},
-	erlmail_store:open(MailBoxName),
+%	MailBoxName = {?MAILBOX,?USER,?DOMAIN},
+%	erlmail_store:open(MailBoxName),
 %	erlmail_store:close(MailBoxName),
 	ok.
 
@@ -79,7 +79,7 @@ c(IP) ->
 %	cmd(Fsm,uid,{fetch,{"1,2,3,4",[envelope]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
 %	cmd(Fsm,fetch,{[1],['rfc822']}),
-
+	cmd(Fsm,status,"INBOX"),
 
 %	cmd(Fsm,close),
 	cmd(Fsm,logout),
