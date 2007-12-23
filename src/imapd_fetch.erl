@@ -78,54 +78,49 @@ process(Items,Message,MIME) -> process(Items,Message,MIME, <<>>).
 process([],_Message,_MIME,Bin) -> 
 	lists:flatten([40,string:strip(binary_to_list(Bin)),41]);
 
-process(['body.peek'|T],Message,MIME,Bin) ->
-	?D('body.peek'),
-	BodyPeek = ["BODY.PEEK",32,32],
-	BodyPeekBin = list_to_binary(BodyPeek),
-	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
-
-
-process(['envelope'|T],Message,MIME,Bin) ->
+process([#imap_fetch_cmd{name = 'envelope'} = _Cmd|T],Message,MIME,Bin) ->
 	Envelope = ["ENVELOPE",32,envelope(MIME),32],
 	EnvelopeBin = list_to_binary(Envelope),
 	process(T,Message,MIME,<<Bin/binary,EnvelopeBin/binary>>);
 
-process(['flags'|T],Message,MIME,Bin) ->
+process([#imap_fetch_cmd{name='flags'} = _Cmd|T],Message,MIME,Bin) ->
 	Flags = ["FLAGS",32,imapd_util:flags_resp(Message#message.flags),32],
 	FlagsBin = list_to_binary(Flags),
 	process(T,Message,MIME,<<Bin/binary,FlagsBin/binary>>);
 
-process(['internaldate'|T],Message,MIME,Bin) ->
+process([#imap_fetch_cmd{name='internaldate'} = _Cmd|T],Message,MIME,Bin) ->
 	InternalDate = ["INTERNALDATE",32,internaldate(Message),32],
 	InternalDateBin = list_to_binary(InternalDate),
 	process(T,Message,MIME,<<Bin/binary,InternalDateBin/binary>>);
 
 
-process(['rfc822.size'|T],Message,MIME,Bin) ->
+process([#imap_fetch_cmd{name='rfc822.size'} = _Cmd|T],Message,MIME,Bin) ->
 	Size = ["RFC822.SIZE",32,integer_to_list(length(Message#message.message)),32],
 	SizeBin = list_to_binary(Size),
 	process(T,Message,MIME,<<Bin/binary,SizeBin/binary>>);
 
-process([uid|T],Message,MIME,Bin) ->
+process([#imap_fetch_cmd{name = 'rfc822.header'} = _Cmd|T],Message,MIME,Bin) ->
+	H = MIME#mime.header_text,
+	Size = length(H),
+	Header = ["RFC822.HEADER",32,123,integer_to_list(Size),125,H,32],
+	HeaderBin = list_to_binary(Header),
+	process(T,Message,MIME,<<Bin/binary,HeaderBin/binary>>);
+
+process([#imap_fetch_cmd{name = uid} = _Cmd|T],Message,MIME,Bin) ->
 	UID = ["UID",32,integer_to_list(Message#message.uid),32],
 	UIDBin = list_to_binary(UID),
 	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
 
-process([{'body.peek',_Pos,[]}|T],Message,MIME,Bin) ->
-	BodyPeekText = MIME#mime.message,
-	?D(BodyPeekText),
-	BodyPeek = ["BODY[]",123,integer_to_list(length(BodyPeekText)),125,13,10,BodyPeekText,32],
-	?D(BodyPeek),
+process([#imap_fetch_cmd{name = 'body.peek'} = _Cmd|T],Message,MIME,Bin) ->
+	B = MIME#mime.header_text ++ MIME#mime.body_text,
+	Size = length(B),
+	BodyPeek = ["BODY.PEEK[]",32,123,integer_to_list(Size),125,13,10,B,32], % 
 	BodyPeekBin = list_to_binary(BodyPeek),
 	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
 
-process([{'body.peek',_Pos,_Items}|T],Message,MIME,Bin) ->
-	BodyPeek = [], % "BODY.PEEK",32,32
-	BodyPeekBin = list_to_binary(BodyPeek),
-	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
-
-process(['rfc822'|T],Message,MIME,Bin) ->
-	Size = length(Message#message.message),
+process([#imap_fetch_cmd{name = 'rfc822'} = _Cmd|T],Message,MIME,Bin) ->
+	M = Message#message.message,
+	Size = length(M),
 	RFC822 = ["RFC822",32,123,integer_to_list(Size),125,13,10,Message#message.message,32],
 	RFC822Bin = list_to_binary(RFC822),
 	process(T,Message,MIME,<<Bin/binary,RFC822Bin/binary>>);
@@ -133,8 +128,6 @@ process(['rfc822'|T],Message,MIME,Bin) ->
 process([H|T],Message,MIME,Bin) ->
 	?D({"Cannot Process: ",H}),
 	process(T,Message,MIME,Bin).
-
-
 
 
 envelope(MIME) -> envelope(MIME,[date,subject,from,sender,reply_to,to,cc,bcc,in_reply_to,message_id], <<>>).
@@ -256,15 +249,33 @@ tokens(String) ->
 %% @hidden
 %% @end
 %%-------------------------------------------------------------------------
-tokens(<<>>,Acc) -> lists:usort(Acc);
+tokens(<<>>,Acc) -> lists:ukeysort(2,Acc);
 tokens(<<32,Rest/binary>>,Acc) ->
 	tokens(Rest,Acc);
 tokens(<<"all",Rest/binary>>,Acc) ->
-	tokens(Rest,[flags,internaldate,'rfc822.size',envelope|Acc]);
+	All = [
+		#imap_fetch_cmd{name=flags,string="FLAGS"},
+		#imap_fetch_cmd{name=internaldate,string="INTERNALDATE"},
+		#imap_fetch_cmd{name='rfc822.size',string="RFC822.SIZE"},
+		#imap_fetch_cmd{name=envelope,string="ENVELOPE"}
+		],
+	tokens(Rest,lists:append(All,Acc));
 tokens(<<"fast",Rest/binary>>,Acc) ->
-	tokens(Rest,[flags,internaldate,'rfc822.size'|Acc]);
+	Fast = [
+		#imap_fetch_cmd{name=flags,string="FLAGS"},
+		#imap_fetch_cmd{name=internaldate,string="INTERNALDATE"},
+		#imap_fetch_cmd{name='rfc822.size',string="RFC822.SIZE"}
+		],
+	tokens(Rest,lists:append(Fast,Acc));
 tokens(<<"full",Rest/binary>>,Acc) ->
-	tokens(Rest,[flags,internaldate,'rfc822.size',envelope,body|Acc]);
+	Full = [
+		#imap_fetch_cmd{name=flags,string="FLAGS"},
+		#imap_fetch_cmd{name=internaldate,string="INTERNALDATE"},
+		#imap_fetch_cmd{name='rfc822.size',string="RFC822.SIZE"},
+		#imap_fetch_cmd{name=envelope,string="ENVELOPE"},
+		#imap_fetch_cmd{name=body,string="BODY"}
+		],
+	tokens(Rest,lists:append(Full,Acc));
 tokens(<<"body.peek[",Rest/binary>>,Acc) ->
 	String = binary_to_list(Rest),
 	Pos = string:chr(String,93),
@@ -277,7 +288,13 @@ tokens(<<"body.peek[",Rest/binary>>,Acc) ->
 		nomatch -> {New,0,0}
 	end,
 	Sections = body_sections(Sec),
-	tokens(list_to_binary(Next),[{body.peek,{Start,Count},Sections}|Acc]);
+	BodyPeek = #imap_fetch_cmd{
+				name = 'body.peek',
+				sections = Sections,
+				start = Start,
+				count = Count,
+				string = "BODY.PEEK[" ++ String},
+	tokens(list_to_binary(Next),[BodyPeek|Acc]);
 tokens(<<"body[",Rest/binary>>,Acc) ->
 	String = binary_to_list(Rest),
 	Pos = string:chr(String,93),
@@ -290,28 +307,34 @@ tokens(<<"body[",Rest/binary>>,Acc) ->
 		nomatch -> {New,0,0}
 	end,
 	Sections = body_sections(Sec),
-	tokens(list_to_binary(Next),[{body,{Start,Count},Sections}|Acc]);
+	Body = #imap_fetch_cmd{
+			name = 'body.peek',
+			sections = Sections,
+			start = Start,
+			count = Count,
+			string = "BODY.PEEK[" ++ String},
+	tokens(list_to_binary(Next),[Body|Acc]);
 
 tokens(<<"body",Rest/binary>>,Acc) ->
-	tokens(Rest,[body|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=body,string="BODY"}|Acc]);
 tokens(<<"bodystructure",Rest/binary>>,Acc) ->
-	tokens(Rest,[bodystructure|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=bodystrucutre,string="BODYSTRUCUTRE"}|Acc]);
 tokens(<<"envelope",Rest/binary>>,Acc) ->
-	tokens(Rest,[envelope|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=envelope,string="ENVELOPE"}|Acc]);
 tokens(<<"flags",Rest/binary>>,Acc) ->
-	tokens(Rest,[flags|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=flags,string="FLAGS"}|Acc]);
 tokens(<<"internaldate",Rest/binary>>,Acc) ->
-	tokens(Rest,[internaldate|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=internaldate,string="INTERNALDATE"}|Acc]);
 tokens(<<"rfc822.header",Rest/binary>>,Acc) ->
-	tokens(Rest,[rfc822.header|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name='rfc822.header',string="RFC822.HEADER"}|Acc]);
 tokens(<<"rfc822.size",Rest/binary>>,Acc) ->
-	tokens(Rest,[rfc822.size|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name='rfc822.size',string="RFC822.SIZE"}|Acc]);
 tokens(<<"rfc822.text",Rest/binary>>,Acc) ->
-	tokens(Rest,[rfc822.text|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name='rfc822.text',string="RFC822.TEXT"}|Acc]);
 tokens(<<"rfc822",Rest/binary>>,Acc) ->
-	tokens(Rest,[rfc822|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=rfc822,string="RFC822"}|Acc]);
 tokens(<<"uid",Rest/binary>>,Acc) ->
-	tokens(Rest,[uid|Acc]);
+	tokens(Rest,[#imap_fetch_cmd{name=uid,string="UID"}|Acc]);
 
 tokens(Bin,_Acc) -> 
 	?D(Bin),

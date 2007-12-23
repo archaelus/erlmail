@@ -612,9 +612,9 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
-	Items = case lists:member(uid,Data) of
-		true -> Data;
-		false -> lists:usort([uid|Data])
+	Items = case lists:keysearch(uid,2,Data) of
+		{value,_} -> Data;
+		_ -> lists:ukeysort(2,lists:append([#imap_fetch_cmd{name=uid,string="UID"}],Data))
 	end,
 	imapd_util:out(Command,{fetch,Seq,Items},State),
 	MailBox = gen_store:select(Selected,State),

@@ -59,6 +59,15 @@
 	line = []
 	}).
 
+-record(imap_fetch_cmd,{
+	name     = [],
+	sections = [],
+	parts    = [],
+	start    = 0,
+	count    = 0,
+	string   = []
+	}).
+
 -record(mailbox,{
 	name        = [],
 	flags       = [],

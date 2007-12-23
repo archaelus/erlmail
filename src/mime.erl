@@ -201,11 +201,11 @@ split(Part) ->
 				0 -> {error,no_break_found};
 				Pos ->
 					{Header,Body} = lists:split(Pos+1,Part),
-					#mime{header_text=string:strip(Header,right,10), body_text = Body}
+					#mime{header_text=Header, body_text = Body}
 			end;
 		Pos -> 
-			{Header,Body} = lists:split(Pos+1,Part),
-			#mime{header_text=string:strip(Header,right,10), body_text = Body}
+			{Header,Body} = lists:split(Pos+3,Part),
+			#mime{header_text=Header, body_text = Body}
 	end.
 
 
