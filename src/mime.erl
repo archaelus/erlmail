@@ -119,7 +119,7 @@ decode(Message) ->
 					MIME#mime{header = Headers, body = MIMEParts};
 				false -> MIME#mime{header = Headers, body = MIME#mime.body_text}
 			end;
-		_ -> MIME#mime{header = Headers, body = MIME#mime.body_text}
+		_ -> MIME#mime{header = Headers, body = MIME#mime.body_text, message = Message}
 	end.
 
 

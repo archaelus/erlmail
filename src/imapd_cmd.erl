@@ -165,13 +165,13 @@ command(#imap_cmd{tag = Tag, cmd = select = Command, data = MailBoxName},
 			% @todo Clean up Flag processing - figure out where to store data
 			% @todo Clean up PermanentFlag processing - figure out where to store data
 			RespList = 
-				[#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},
-				 #imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},
-				 #imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},
-				 #imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},
-				 #imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
-				 #imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
-				 #imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
+				[#imap_resp{tag = '*', status = MailBox#mailbox.exists, cmd = exists},
+				 #imap_resp{tag = '*', status = MailBox#mailbox.recent, cmd = recent},
+				 #imap_resp{tag = '*', cmd = flags, data = {flags,MailBox#mailbox.flags}},
+				 #imap_resp{tag = '*', status = ok, code = {unseen,MailBox#mailbox.unseen}},
+				 #imap_resp{tag = '*', status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
+				 #imap_resp{tag = '*', status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
+				 #imap_resp{tag = '*', status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
 				 #imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"}
 				],
 			imapd_resp:respond(RespList,Tag,State),
@@ -202,13 +202,13 @@ command(#imap_cmd{tag = Tag, cmd = examine = Command, data = MailBoxName},
 			% @todo Clean up Flag processing - figure out where to store data
 			% @todo Clean up PermanentFlag processing - figure out where to store data
 			RespList = 
-				[#imap_resp{tag = "*", status = MailBox#mailbox.exists, cmd = exists},
-				 #imap_resp{tag = "*", status = MailBox#mailbox.recent, cmd = recent},
-				 #imap_resp{tag = "*", cmd = flags, data = {flags,MailBox#mailbox.flags}},
-				 #imap_resp{tag = "*", status = ok, code = {unseen,MailBox#mailbox.unseen}},
-				 #imap_resp{tag = "*", status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
-				 #imap_resp{tag = "*", status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
-				 #imap_resp{tag = "*", status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
+				[#imap_resp{tag = '*', status = MailBox#mailbox.exists, cmd = exists},
+				 #imap_resp{tag = '*', status = MailBox#mailbox.recent, cmd = recent},
+				 #imap_resp{tag = '*', cmd = flags, data = {flags,MailBox#mailbox.flags}},
+				 #imap_resp{tag = '*', status = ok, code = {unseen,MailBox#mailbox.unseen}},
+				 #imap_resp{tag = '*', status = ok, code = {uidvalidity,MailBoxStore#mailbox_store.uidvalidity}},
+				 #imap_resp{tag = '*', status = ok, code = {uidnext,MailBoxStore#mailbox_store.uidnext}},
+				 #imap_resp{tag = '*', status = ok, code = {permanentflags,[answered,flagged,draft,deleted,seen,'*']}},
 				 #imap_resp{tag = Tag, status = ok, code = 'read-write', cmd = Command, info = "Completed"}
 				],
 			imapd_resp:respond(RespList,Tag,State),
@@ -230,22 +230,28 @@ command(#imap_cmd{tag = Tag, cmd = create = Command},
 	imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State),
 	State;
 command(#imap_cmd{tag = Tag, cmd = create = Command, data = MailBoxName},
-		#imapd_fsm{state = FSMState, user = User} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
+		#imapd_fsm{state = FSMState, user = LoggedIn} = State) when FSMState =:= authenticated; FSMState =:= selected -> 
 	imapd_util:out(Command,MailBoxName,State),
+	User = erlmail_store:select(LoggedIn),
 	case erlmail_store:select({MailBoxName,User#user.name}) of
 		[] -> 
 			% @todo CREATE Check for and clear trailing hierarchy seprator
 			% @todo CREATE parent mailboxes
-			% @todo CREATE UIDVALIDITY for mailbox
-			% @todo CREATE check previosuly deleted forlder info for MAX UID
+			UIDValidity = case lists:keysearch({uidvalidity,MailBoxName},1,User#user.options) of
+				{value,{{uidvalidity,MailBoxName},Value}} -> 
+					erlmail_store:update(User#user{options = lists:keydelete({uidvalidity,MailBoxName},1,User#user.options)}),
+					Value + 1;
+				_ -> 0
+			end,
 			{UserName,DomainName} = User#user.name,
-			erlmail_store:insert(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
+			erlmail_store:insert(#mailbox_store{name={MailBoxName,UserName,DomainName}, uidvalidity=UIDValidity}),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
 			imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
-	State;
+	NewUser = erlmail_store:select(User),
+	State#imapd_fsm{user = NewUser};
 %%%-------------------------
 %%% DELETE - Authenticated
 %%%-------------------------
@@ -266,12 +272,10 @@ command(#imap_cmd{tag = Tag, cmd = delete = Command, data = MailBoxName},
 		#mailbox_store{name = {"INBOX",_,_}} -> 
 			 imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State);
 		MailBoxStore when is_record(MailBoxStore,mailbox_store) -> 
-			{UserName,DomainName} = User#user.name,
 			% @todo DELETE messages and cleanup
 			% @todo DELETE check for \noselect flag; error
 			% @todo DELETE check for sub folders; remove mail and set \noselect leave folder
-			% @todo DELETE maintain list of Max UID for deleted folders incase of recreation
-			erlmail_store:delete(#mailbox_store{name={MailBoxName,UserName,DomainName}}),
+			erlmail_store:delete(MailBoxStore),
 			imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"}],Tag,State);
 		_ -> imapd_resp:respond([#imap_resp{tag = Tag, status = no}],Tag,State)
 	end,
@@ -615,7 +619,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	imapd_util:out(Command,{fetch,Seq,Items},State),
 	MailBox = gen_store:select(Selected,State),
 	Messages = imapd_util:uidseq_message_names(Seq,MailBox),
-	?D(Messages),
+%	?D(Messages),
 	RespList = imapd_fetch:fetch(Messages,Items,State),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd = Command, info = "Completed"} | RespList],Tag,State),
 	State#imapd_fsm{mailbox=MailBox};

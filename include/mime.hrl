@@ -14,7 +14,8 @@
 	header      = [],
 	header_text = [],
 	body        = [],
-	body_text   = []
+	body_text   = [],
+	message     = []
 	}).
 
 -record(addr,{

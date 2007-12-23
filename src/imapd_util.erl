@@ -296,7 +296,7 @@ out(Command,State) -> io:format("~p ~p~n",[State#imapd_fsm.addr,Command]).
 out(Command,Param,State) -> io:format("~p ~p ~p~n",[State#imapd_fsm.addr,Command,Param]).
 
 %%-------------------------------------------------------------------------
-%% @spec parse(Line::string(),State::imapd_fsm()) -> imap_cmd()
+%% @spec (Line::string(),State::imapd_fsm()) -> imap_cmd()
 %% @type imap_cmd() = {imap_cmd,line(),tag(),comamnd(),cmd_data()}
 %% @type line() = string()
 %% @type command() = atom()
@@ -360,8 +360,8 @@ parse(Line,State) ->
 				store -> 
 					{Seq,ItemFlags} = clean(split_at(Args)),
 					{ItemName,Flags} = clean(split_at(ItemFlags)),
-					
-					{store,uidseq_to_list(Seq,State),to_lower_atom(ItemName),list_to_flags(Flags)}
+					{store,uidseq_to_list(Seq,State),to_lower_atom(ItemName),list_to_flags(Flags)};
+				_ -> []
 			end;
 		Cmd              -> Data
 	end,
@@ -780,6 +780,9 @@ uidseq_to_list([H|T],State,Acc) ->
 			Start = list_to_integer(S),
 			End = case E of	
 				"*" -> 
+					MailBox = State#imapd_fsm.mailbox,
+					MailBox#mailbox_store.uidnext - 1;
+				'*' -> 
 					MailBox = State#imapd_fsm.mailbox,
 					MailBox#mailbox_store.uidnext - 1;
 				E when is_list(E) -> list_to_integer(E)

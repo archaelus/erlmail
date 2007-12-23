@@ -236,18 +236,35 @@ select(MailBox) when is_record(MailBox,mailbox_store) ->
 select({_MailBoxName,{_UserName,_DomainName}} = MailBox) -> 
 	Store = store(mailbox_store),
 	Store:select(MailBox);
+select(User) when is_record(User,user) ->
+	Store = store(user),
+	Store:select(User#user.name);
 select({_UserName,_DomainName} = User) -> 
 	Store = store(user),
 	Store:select(User).
 
 update(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
 	Store = store(mailbox_store),
-	Store:update(MailBoxStore).
-
+	Store:update(MailBoxStore);
+update(User) when is_record(User,user) ->
+	Store = store(user),
+	Store:update(User).
 
 delete(MailBoxStore) when is_record(MailBoxStore,mailbox_store) ->
 	Store = store(mailbox_store),
+	{MBName,UserName,DomainName} = MailBoxStore#mailbox_store.name,
+	User = select({UserName,DomainName}),
+	Options = case lists:keysearch({uidvalidity,MBName},1,User#user.options) of
+		{value,_} -> lists:keyreplace({uidvalidity,MBName},1,User#user.options,{{uidvalidity,MBName},MailBoxStore#mailbox_store.uidvalidity});
+		_ -> [{{uidvalidity,MBName},MailBoxStore#mailbox_store.uidvalidity} | User#user.options]
+	end,
+	update(User#user{options=lists:usort(Options)}),
 	Store:delete(MailBoxStore).
+
+
+
+
+
 
 
 %%%% Private Functions

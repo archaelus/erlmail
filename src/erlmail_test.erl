@@ -73,15 +73,13 @@ c(IP) ->
 	cmd(Fsm,capability),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
 	cmd(Fsm,select,"INBOX"),
-%	cmd(Fsm,store,{[1,2,3,4,5,35],delete,[deleted]}),
-%	cmd(Fsm,expunge),
-%	cmd(Fsm,copy,{[35],"Test"}),
-	cmd(Fsm,uid,{fetch,{"1",[envelope]}}),
+%	cmd(Fsm,uid,{fetch,{[1],[envelope,uid,'rfc822.size',flags, internaldate]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
-%	cmd(Fsm,fetch,{[1],['rfc822']}),
-%	cmd(Fsm,status,"INBOX"),
+	cmd(Fsm,uid,{fetch,{[1],['body.peek[]']}}),
 
-%	cmd(Fsm,close),
+
+
+	cmd(Fsm,close),
 	cmd(Fsm,logout),
 	ok.
 
@@ -98,6 +96,8 @@ clear() ->
 	mnesia:clear_table(erlmail_message),
 	mnesia:clear_table(erlmail_mailbox_store),
 	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","erlsoft.net"}}),
+	mnesia_store:insert(#mailbox_store{name={"Drafts","simpleenigma","erlsoft.net"}}),
+	mnesia_store:insert(#mailbox_store{name={"Sent Items","simpleenigma","erlsoft.net"}}),
 	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","orgonite.com"}}),
 	mnesia_store:insert(#mailbox_store{name={"INBOX","simpleenigma","cloud-busters.com"}}),
 	ok.
@@ -108,8 +108,8 @@ test_message() ->
 	Port = 25,
 	Host = "simpleenigma.com",
 	From = "sjackson@simpleenigma.com",
-	To = ["simpleenigma@erlsoft.net",{"simpleenigmainc","gmail.com"}],
-	Message = m(From,To,"Test","This is a test message"),
+	To = "simpleenigma@erlsoft.net",
+	Message = m(From,[To],"Test","This is a test message"),
 	smtpc:sendmail(IPAddress,Port,Host,From,To,Message).
 
 

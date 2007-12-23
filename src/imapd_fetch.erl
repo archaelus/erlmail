@@ -112,8 +112,9 @@ process([uid|T],Message,MIME,Bin) ->
 	process(T,Message,MIME,<<Bin/binary,UIDBin/binary>>);
 
 process([{'body.peek',_Pos,[]}|T],Message,MIME,Bin) ->
-	BodyPeekText = MIME#mime.body_text,
-	BodyPeek = ["BODY.PEEK",32,123,integer_to_list(length(BodyPeekText)),125,13,10,BodyPeekText,32],
+	BodyPeekText = MIME#mime.message,
+	?D(BodyPeekText),
+	BodyPeek = ["BODY[]",123,integer_to_list(length(BodyPeekText)),125,13,10,BodyPeekText,32],
 	?D(BodyPeek),
 	BodyPeekBin = list_to_binary(BodyPeek),
 	process(T,Message,MIME,<<Bin/binary,BodyPeekBin/binary>>);
@@ -175,7 +176,6 @@ envelope(MIME, [H|T], Bin) ->
 
 
 string_to_address(String) -> 
-	?D(String),
 	AddressList = imapd_util:parse_addresses(String),
 	Addresses = lists:map(fun(A) -> 
 		[40,
