@@ -612,6 +612,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
+	?D(Data),
 	Items = case lists:keysearch(uid,2,Data) of
 		{value,_} -> Data;
 		_ -> lists:ukeysort(2,lists:append([#imap_fetch_cmd{name=uid,string="UID"}],Data))

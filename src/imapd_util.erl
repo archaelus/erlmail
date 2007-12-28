@@ -433,6 +433,7 @@ quote(String) -> quote(String,optional).
 %% @end
 %%-------------------------------------------------------------------------
 quote(Atom,Boolean) when is_atom(Atom) -> quote(atom_to_list(Atom),Boolean);
+quote("NIL",_)         -> "NIL";
 quote(String,true)     -> [34] ++ String ++ [34];
 quote(String,optional) -> 
 	case string:chr(String,32) of
@@ -730,7 +731,7 @@ store_flags(Messages,State,Action,Flags) ->
 			flags(Action,Flag,Acc)
 			end,Message,Flags),
 		gen_store:update(NewMessage,State),
-		imapd_fetch:fetch([MessageName],[flags],State)
+		imapd_fetch:fetch([MessageName],[#imap_fetch_cmd{name=flags,string="FLAGS"}],State)
 	end,Messages),
 	lists:flatten(Resp).
 

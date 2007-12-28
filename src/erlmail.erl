@@ -81,6 +81,6 @@ reload() ->
 		mime,
 		smtpd_app,smtpd_sup,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,
 		smtpc,smtpc_fsm,smtpc_util,
-		erlmail_test
+		erlmail_test,erml_erlmail
 		]).
 	

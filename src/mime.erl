@@ -39,7 +39,8 @@
 
 -export([encode/1,decode/1]).
 
--export([split/1,headers/1,split_multipart/2,get_header/2,dec_addr/1]).
+-export([split/1,headers/1,split_multipart/2,get_header/2,get_header/3,dec_addr/1]).
+
 
 
 
@@ -170,7 +171,6 @@ headers([H|T],Acc) ->
 	end,
 	headers(T,[head_clean(Header,Value)|Acc]);
 headers([],Acc) -> lists:reverse(Acc).
-	
 
 head_clean(Key, #addr{} = Value) -> {Key,Value};
 head_clean(Key,Value) ->
@@ -246,12 +246,14 @@ split_multipart(Boundary,Body,Acc) ->
 
 
 
+get_header(Key,MIME) when is_record(MIME,mime) -> get_header(Key,MIME#mime.header,[]);
+get_header(Key,Header) -> get_header(Key,Header,[]).
 
-get_header(Key,MIME) when is_record(MIME,mime) -> get_header(Key,MIME#mime.header);
-get_header(Key,Header) ->
+get_header(Key,MIME,Default) when is_record(MIME,mime) -> get_header(Key,MIME#mime.header,Default);
+get_header(Key,Header,Default) ->
 	case lists:keysearch(Key,1,Header) of
 		{value,{Key,Value}} -> Value;
-		_ -> []
+		_ -> Default
 	end.
 
 

@@ -73,7 +73,7 @@ c(IP) ->
 	cmd(Fsm,capability),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
 	cmd(Fsm,select,"INBOX"),
-	cmd(Fsm,uid,{fetch,{[1],[all]}}),
+	cmd(Fsm,uid,{fetch,{[1],[bodystructure]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822.header']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['body.peek[]']}}),
@@ -104,8 +104,10 @@ clear() ->
 	ok.
 
 
-test_message() ->
-	IPAddress = {76,204,23,210},
+test_message() -> test_message(1).
+test_message(1) -> test_message({76,204,23,210});
+test_message(2) -> test_message({10,1,1,175});
+test_message(IPAddress) ->
 	Port = 25,
 	Host = "simpleenigma.com",
 	From = "sjackson@simpleenigma.com",
