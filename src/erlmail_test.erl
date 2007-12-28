@@ -73,7 +73,7 @@ c(IP) ->
 	cmd(Fsm,capability),
 	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
 	cmd(Fsm,select,"INBOX"),
-	cmd(Fsm,uid,{fetch,{[1],[bodystructure]}}),
+	cmd(Fsm,uid,{fetch,{[1],[body]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822.header']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['body.peek[]']}}),

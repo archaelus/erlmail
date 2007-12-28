@@ -83,6 +83,12 @@ process([#imap_fetch_cmd{name = 'envelope'} = _Cmd|T],Message,MIME,Bin) ->
 	EnvelopeBin = list_to_binary(Envelope),
 	process(T,Message,MIME,<<Bin/binary,EnvelopeBin/binary>>);
 
+process([#imap_fetch_cmd{name = 'body'} = _Cmd|T],Message,MIME,Bin) ->
+	BS = body(MIME),
+	Body = ["BODY",32,BS,32],
+	BodyBin = list_to_binary(Body),
+	process(T,Message,MIME,<<Bin/binary,BodyBin/binary>>);
+
 process([#imap_fetch_cmd{name = 'bodystructure'} = _Cmd|T],Message,MIME,Bin) ->
 	BS = bodystructure(MIME),
 	BodyStructure = ["BODYSTRUCTURE",32,BS,32],
@@ -231,7 +237,44 @@ case MIME#mime.body of
 
 
 
-
+body(MIME) -> 
+	?D(MIME),
+	body(MIME,[]).
+body(MIME,Acc) ->
+case MIME#mime.body of
+		[#mime{}|_] = MIMEBody -> bodystructure(MIMEBody);
+		TextBody -> 
+			{Type,SubType,CharSet} = case mime:get_header('content-type',MIME) of
+				[] -> {"text","plain","us-ascii"};
+				ContentType ->
+					case string:tokens(ContentType,[32,34,47,59,61]) of
+						[T,ST] -> {T,ST,"us-ascii"};
+						[T,ST,_,C] -> {T,ST,C};
+						_Other -> 
+							?D(_Other),
+							{"text","plain","us-ascii"}
+					end
+					
+			end,
+			ContentId = mime:get_header('content-id',MIME,"NIL"),
+			ContentDesc = mime:get_header('content-description',MIME,"NIL"),
+			ContentTransEnc = mime:get_header('content-transfer-encoding',MIME,"7BIT"),
+			Size = length(TextBody),
+			Lines = length(string:tokens(TextBody,[13,10])),
+			[40,
+				imapd_util:quote(string:to_upper(Type),true),32,
+				imapd_util:quote(string:to_upper(SubType),true),32,
+				40,
+					imapd_util:quote("CHARSET",true),32,
+					imapd_util:quote(string:to_upper(CharSet),true),
+				41,32,
+				imapd_util:quote(string:to_upper(ContentId),true),32,
+				imapd_util:quote(string:to_upper(ContentDesc),true),32,
+				imapd_util:quote(string:to_upper(ContentTransEnc),true),32,
+				integer_to_list(Size),32,
+				integer_to_list(Lines),
+			41]
+	end.
 
 
 
