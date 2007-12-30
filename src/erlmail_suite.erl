@@ -1,7 +1,7 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       ErlMail test suite
+%%% @doc       ErlMail Common Test Suite. This common test suite is designed to work with ErlMail as well as to test any general SMTP, IMAP4 or POP3 server.
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
@@ -35,3 +35,53 @@
 %%%---------------------------------------------------------------------------------------
 -module(erlmail_suite).
 -author('sjackson@simpleenigma.com').
+
+%%% If you get an error about ct.hrl not being able to include test_server.hrl then
+%%% Change the ct.hrl that that shows:
+%%% -include("test_server.hrl").
+%%% so that it reads
+%%% -include_lib("test_Server/include/test_server.hrl").
+%%%
+-include_lib("common_test/include/ct.hrl").
+
+-export([all/0,suite/0]).
+-export([init_per_suite/2,end_per_suite/2]).
+
+-export([imap_non_authenticated/0,imap_non_authenticated/1]).
+
+
+all() -> [imap_non_authenticated].
+
+init_per_suite(_TestCaseName,Config) -> Config.
+end_per_suite(_TestCaseName,_Config) -> ok.
+
+suite() ->
+	[
+	  {timetrap,{minutes,1}},
+	  {require,server}
+	].
+
+
+
+imap_non_authenticated() -> 
+	[
+	  {userdata,[{doc,"Perform all IMAP non-authentiocated commands"}]}
+	].
+imap_non_authenticated(Config) -> 
+	Server = ?config(server,Config),
+	{ok,Fsm} = imapc:connect(Server),
+	{ok,noop_successfull} = imapc:noop(Fsm),
+	{ok,capability_successful,_Capabilities} = imapc:capability(Fsm),
+	{ok,logout_successful} = imapc:logout(Fsm),	
+	ok.
+
+
+
+
+
+
+
+
+
+
+
