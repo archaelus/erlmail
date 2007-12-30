@@ -1,7 +1,7 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author    Stuart Jackson <sjackson@simpleenigma.com> [http://erlsoft.org]
 %%% @copyright 2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc       ErlMail Common Test Suite. This common test suite is designed to work with ErlMail as well as to test any general SMTP, IMAP4 or POP3 server.
+%%% @doc       EMail Common Test Suite. This common test suite is designed to work with ErlMail as well as to test any general SMTP, IMAP4 or POP3 server.
 %%% @reference See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version   0.0.6
@@ -33,7 +33,7 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(erlmail_suite).
+-module(email_suite).
 -author('sjackson@simpleenigma.com').
 
 %%% If you get an error about ct.hrl not being able to include test_server.hrl then
@@ -47,10 +47,10 @@
 -export([all/0,suite/0]).
 -export([init_per_suite/2,end_per_suite/2]).
 
--export([imap_non_authenticated/0,imap_non_authenticated/1]).
+-export([smtp/0,smtp/1,imap/0,imap/1,pop/0,pop/1]).
 
 
-all() -> [imap_non_authenticated].
+all() -> [smtp,imap,pop].
 
 init_per_suite(_TestCaseName,Config) -> Config.
 end_per_suite(_TestCaseName,_Config) -> ok.
@@ -63,11 +63,20 @@ suite() ->
 
 
 
-imap_non_authenticated() -> 
+smtp() -> 
 	[
-	  {userdata,[{doc,"Perform all IMAP non-authentiocated commands"}]}
+	  {userdata,[{doc,"Perform all SMTP commands"}]}
 	].
-imap_non_authenticated(Config) -> 
+smtp(Config) -> 
+	_Server = ?config(server,Config),
+	ok.
+
+
+imap() -> 
+	[
+	  {userdata,[{doc,"Perform all IMAP commands"}]}
+	].
+imap(Config) -> 
 	Server = ?config(server,Config),
 	{ok,Fsm} = imapc:connect(Server),
 	{ok,noop_successfull} = imapc:noop(Fsm),
@@ -76,10 +85,13 @@ imap_non_authenticated(Config) ->
 	ok.
 
 
-
-
-
-
+pop() -> 
+	[
+	  {userdata,[{doc,"Perform all POP commands"}]}
+	].
+pop(Config) -> 
+	_Server = ?config(server,Config),
+	ok.
 
 
 
