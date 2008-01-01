@@ -14,6 +14,7 @@
 	{server_smtp_port,25},
 	{server_smtp_max_connection,25},
 	{server_smtp_greeting,"ErlMail http://erlsoft.org (NO UCE)"},
+	{server_smtp_reply,[]},
 
 	{server_imap_start,false},
 	{server_imap_name, "imap.erlsoft.net"},
