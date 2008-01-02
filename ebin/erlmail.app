@@ -17,6 +17,7 @@
 	{server_smtp_relay_clients,[]},
 	{server_smtp_retries,10},
 	{server_smtp_retry_interval,[15,30,60,240]},
+	{server_stmp_failure_notification,true},
 
 	{server_imap_start,false},
 	{server_imap_name, "imap.erlsoft.net"},
