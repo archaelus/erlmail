@@ -38,6 +38,11 @@
 
 -behavior(gen_erml).
 
--export([list/0]).
+-export([ermlimap/2,ermlpop/2,ermlsmtp/2]).
 
-list() -> [].
+ermlimap(Element,ERML) -> {Element,ERML}.
+ermlsmtp(Element,ERML) -> {Element,ERML}.
+ermlpop(Element,ERML)  -> {Element,ERML}.
+
+
+
