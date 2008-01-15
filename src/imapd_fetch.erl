@@ -199,7 +199,7 @@ string_to_address(String) ->
 bodystructure(MIME) -> 
 	?D(MIME),
 	bodystructure(MIME,[]).
-bodystructure(MIME,Acc) ->
+bodystructure(MIME,_Acc) ->
 case MIME#mime.body of
 		[#mime{}|_] = MIMEBody -> bodystructure(MIMEBody);
 		TextBody -> 
@@ -238,9 +238,9 @@ case MIME#mime.body of
 
 
 body(MIME) -> 
-	?D(MIME),
+%	?D(MIME),
 	body(MIME,[]).
-body(MIME,Acc) ->
+body(MIME,_Acc) ->
 case MIME#mime.body of
 		[#mime{}|_] = MIMEBody -> bodystructure(MIMEBody);
 		TextBody -> 

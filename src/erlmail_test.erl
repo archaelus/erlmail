@@ -47,6 +47,7 @@
 -define(DOMAIN,   "erlsoft.net").
 -define(EMAIL,    "simpleenigma@erlsoft.net").
 -define(PASSWORD, "erlmail").
+-define(TESTIP,   {10,1,1,175}).
 
 
 
@@ -67,13 +68,14 @@ t() ->
 
 
 
-c() -> c({10,1,1,175}).
-c(IP) -> 
+c() -> c(?TESTIP,?EMAIL, ?PASSWORD).
+c(IP,Email,Password) -> 
 	{ok,Fsm} = imapc:connect(IP),
 	cmd(Fsm,capability),
-	cmd(Fsm,login,{?EMAIL, ?PASSWORD}),
+	cmd(Fsm,login,{Email,Password}),
 	cmd(Fsm,select,"INBOX"),
-	cmd(Fsm,uid,{fetch,{[1],[body]}}),
+	cmd(Fsm,fetch,{[1],[flags,internaldate,envelope,'rfc822.size',uid]}),
+%	cmd(Fsm,uid,{fetch,{[1],[body]}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['rfc822.header']}}),
 %	cmd(Fsm,uid,{fetch,{[1],['body.peek[]']}}),

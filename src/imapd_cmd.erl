@@ -543,12 +543,12 @@ command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = []}, State) ->
 	imapd_util:out(Command,State),
 	imapd_resp:respond([#imap_resp{tag = Tag, status = bad}],Tag,State),
 	State;
-command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Data}}, State) -> 
+command(#imap_cmd{tag = Tag, cmd = fetch = Command, data = {Seq,Items}}, State) -> 
 	imapd_util:out(Command,State),
-	
-	?D({Seq,Data}),
-	
-	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"}],Tag,State),
+	MailBox = gen_store:select(State#imapd_fsm.mailbox,State),
+	Messages = imapd_util:seq_message_names(Seq,MailBox),
+	RespList = imapd_fetch:fetch(Messages,Items,State),	
+	imapd_resp:respond([#imap_resp{tag = Tag, status = ok, cmd= Command, info = "Completed"} | RespList],Tag,State),
 	State;
 
 % @todo FETCH impliment command
@@ -612,7 +612,7 @@ command(#imap_cmd{tag = Tag, cmd = uid = Command, data = []}, State) ->
 	State;
 command(#imap_cmd{tag = Tag, cmd = uid = Command, data = {fetch,Seq,Data}},
 	#imapd_fsm{state = selected, mailbox = Selected} = State) -> 
-	?D(Data),
+%	?D(Data),
 	Items = case lists:keysearch(uid,2,Data) of
 		{value,_} -> Data;
 		_ -> lists:ukeysort(2,lists:append([#imap_fetch_cmd{name=uid,string="UID"}],Data))
