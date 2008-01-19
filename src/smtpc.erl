@@ -39,7 +39,7 @@
 
 -export([connect/1,help/1,noop/1,quit/1,rcpt/2,rset/1,vrfy/2]).
 -export([connect/2,data/2,ehlo/2,etrn/2,expn/2,helo/2,mail/2]).
--export([sendmail/5,sendmail/6]).
+-export([sendmail/4,sendmail/5,sendmail/6]).
 
 %%-------------------------------------------------------------------------
 %% @spec (IpAddress::term()) -> {ok,Pid::pid()} | {error,Reason::atom()}
@@ -172,6 +172,7 @@ vrfy(Pid,Address) -> gen_fsm:sync_send_event(Pid, {vrfy,Address}).
 %% Descrip.: Sends data of email message
 %% Returns : ok
 %%--------------------------------------------------------------------
+sendmail(IPAddress,From,To,Message) -> sendmail(IPAddress,25,"ErlMail",From,To,Message).
 sendmail(IPAddress,Host,From,To,Message) -> sendmail(IPAddress,25,Host,From,To,Message).
 sendmail(IPAddress,Port,Host,From,To,Message) ->
 	{ok,Pid} = connect(IPAddress,Port),

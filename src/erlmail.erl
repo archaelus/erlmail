@@ -75,7 +75,7 @@ reload() ->
 	io:format("Reloading ErlMail Modules ...~n"),
 	reload:reload([
 		erlmail_app,erlmail_sup,erlmail_util,erlmail_store,erlmail_store_sup,erlmail_suite,
-		gen_store,dets_store,mnesia_store,mysql_store,
+		gen_store,dets_store,mnesia_store,mysql_store,aws_store,
 		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_sup,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
 		mime,
