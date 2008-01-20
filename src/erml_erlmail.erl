@@ -56,15 +56,18 @@ ermlpop(_Element,ERML)  -> {#xmlElement{name=ermlcommand},ERML}.
 
 ermlsmtp(Element,ERML) -> 
 	Required = gen_erml:get_attrib(Element,ERML,[server,to,from,subject]),
-	Optional = gen_erml:get_attrib(Element,ERML,[]),
+	Optional = gen_erml:get_attrib(Element,ERML,[port,host]),
 	Args = lists:append([Required,Optional]),
 	{Message,_NewERML} = gen_erml:get_content(Element,ERML),
 	IP = server_ip(gen_erml:get_value(server,Args)),
 	From    = gen_erml:get_value(from,Args),
 	Subject = gen_erml:get_value(subject,Args),
 	To      = gen_erml:get_value(to,Args),
+	Port    = gen_erml:get_value(port,Args,25),
+	Host    = gen_erml:get_value(host,Args,"ErlMail"),
 	MIME = #mime{header=[{from,From},{to,[To]},{subject,Subject}],body = string:strip(Message,both,10)},
-	smtpc:sendmail(IP,25,"ErlMail",From,To,mime:encode(MIME)),
+	MIMEMessage = mime:encode(MIME),
+	smtpc:sendmail(IP,Port,Host,From,To,MIMEMessage),
 	{#xmlElement{name=ermlcommand},ERML}.
 
 
