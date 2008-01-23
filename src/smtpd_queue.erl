@@ -45,11 +45,23 @@
 
 
 
-
+%%-------------------------------------------------------------------------
+%% @spec (IP::tuple()) -> true | false
+%% @doc  Determines of IP address is in any of the ranges listed in the 
+%%		server_smtp_relay_clients enviroment variable. Check configuration
+%%		information on how to add more ranges into the user config file.
+%% @end
+%%-------------------------------------------------------------------------
 checkip(IP) ->
 	Ranges = erlmail_util:get_app_env(server_smtp_relay_clients,[]),
 	checkip(IP,Ranges).
 
+%%-------------------------------------------------------------------------
+%% @spec (IP::tuple(),{Start::tuple(),End::tuple}) -> true | false
+%% @doc
+%% @hidden
+%% @end
+%%-------------------------------------------------------------------------
 checkip(_IP,[]) -> false;
 checkip(IP,[{Network,Mask}|T]) ->
 	case ip_in_range(IP,mtor(Network,Mask)) of
@@ -57,18 +69,11 @@ checkip(IP,[{Network,Mask}|T]) ->
 		false -> checkip(IP,T)
 	end.
 
-
-
-
-
-
-
-
-
-
-
-
-
+%%-------------------------------------------------------------------------
+%% @spec (IP::tuple(),{Start::tuple(),End::tuple}) -> true | false
+%% @doc  determines of IP address is between Start and End
+%% @end
+%%-------------------------------------------------------------------------
 ip_in_range(IP,{Start,End}) -> 
 	D = aton(IP),
 	S = aton(Start),
