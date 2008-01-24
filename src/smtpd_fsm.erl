@@ -91,7 +91,8 @@ init([]) ->
     inet:setopts(Socket, [{active, once}, binary]),
     {ok, {IP, _Port}} = inet:peername(Socket),
 	{ok,DNSBL} = erlmail_antispam:dnsbl(IP),
-	NewState = State#smtpd_fsm{socket=Socket, addr=IP, options = DNSBL},
+	?D({relay,IP,smtpd_queue:checkip(IP)}),
+	NewState = State#smtpd_fsm{socket=Socket, addr=IP, options = DNSBL, relay = smtpd_queue:checkip(IP)},
 	NextState = smtpd_cmd:command({greeting,IP},NewState),
     {next_state, 'WAIT_FOR_CMD', NextState, ?TIMEOUT};
 'WAIT_FOR_SOCKET'(Other, State) ->
@@ -132,7 +133,7 @@ init([]) ->
 		0 -> {next_state, 'WAIT_FOR_DATA', State#smtpd_fsm{buff = NewBuff}, ?TIMEOUT};
 		Pos -> % wait for end of data and return data in state.
 			<<Message:Pos/binary,13,10,46,13,10,NextBuff/binary>> = NewBuff,
-			%@todo Check return value of store_message to see if it fails
+			% @todo Check return value of store_message to see if it fails
 			smtpd_cmd:store_message(Message,State),
 			smtpd_cmd:out(data,"complete",State),
 			smtpd_cmd:send(State,250),

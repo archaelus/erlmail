@@ -27,6 +27,7 @@
 -record(smtpd_fsm,{
 	socket      = [],
 	addr        = [],
+	relay       = false,
 	options     = [],
 	buff        = <<>>,
 	line        = [],
@@ -46,4 +47,10 @@
                 module          % FSM handling module
                }).
 
+-record(outgoing_smtp,{
+	rcpt       = [],
+	tries      = 0,
+	next_retry = [],
+	response   = []
+	}).
 

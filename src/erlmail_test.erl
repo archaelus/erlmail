@@ -109,11 +109,11 @@ clear() ->
 test_message() -> test_message(1).
 test_message(1) -> test_message({76,204,23,210});
 test_message(2) -> test_message({10,1,1,175});
-test_message(IPAddress) ->
+test_message(IPAddress) -> test_message(IPAddress,"simpleenigma@erlsoft.net").
+test_message(IPAddress,To) ->
 	Port = 25,
 	Host = "simpleenigma.com",
 	From = "sjackson@simpleenigma.com",
-	To = "simpleenigma@erlsoft.net",
 	Message = m(From,[To],"Test","This is a test message"),
 	smtpc:sendmail(IPAddress,Port,Host,From,To,Message).
 

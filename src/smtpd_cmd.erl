@@ -42,6 +42,8 @@
 -export([store_message/2,store_message/4]).
 -export([out/3,send/2]).
 
+-export([check_user/1,check_user/2]).
+
 
 command(Line,State) when is_binary(Line) -> command(parse(Line),State);
 
@@ -78,21 +80,28 @@ command({rcpt = Command,Param},#smtpd_fsm{rcpt = RcptList} = State) when is_list
 	out(Command,Param,State),
 	send(State,452,"Too many recipients"),
 	State;
-command({rcpt = Command,Param},State) ->
+command({rcpt = Command,Param},#smtpd_fsm{relay = Relay} = State) ->
 	To = clean_email(Param),
 	out(Command,To,State),
-	case check_user(erlmail_util:split_email(To)) of
+	?D({relay,Relay}),
+	case check_user(erlmail_util:split_email(To),Relay) of
 		true ->
 			NewRcptList = case State#smtpd_fsm.rcpt of
 				undefined -> [To];
 				RcptList -> [To|RcptList]
 			end,
 			send(State,250),
+			?D({rcpt,NewRcptList}),
 			State#smtpd_fsm{rcpt=NewRcptList};
 		false ->
 			send(State,550),
 			State
 	end;
+
+command({data = Command,[]},#smtpd_fsm{rcpt = undefined} = State) ->
+	out(Command,State),
+	send(State,503),
+	State;
 command({data = Command,[]},State) ->
 	out(Command,State),
 	send(State,354),
@@ -148,13 +157,16 @@ command({Command,Param},State) ->
 	send(State,500),
 	State.
 
-
-
-check_user({_UserName,_DomainName} = Name) ->
+check_user(Name) -> check_user(Name,undefined).
+check_user(_Name,true) -> true;
+check_user({_UserName,_DomainName} = Name,_Relay) ->
 	case erlmail_store:status(Name) of
 		{ok,User} when is_record(User,user) -> true;
 		_Other -> false
 	end.
+
+
+%% @todo cehck relay state and store messages according to local or outgoing status. Only real differene is in the message name.
 
 store_message(Message,State) when is_binary(Message) -> store_message(binary_to_list(Message),State);
 store_message(Message,_State) when is_record(Message,message) ->
@@ -167,13 +179,26 @@ store_message(Message,_State) when is_record(Message,message) ->
 			end;
 		{error,Reason} -> {error,Reason}
 	end;
-store_message(Message,State) ->
+store_message(Message,#smtpd_fsm{relay = _Relay} = State) ->
 	lists:map(fun(To) -> 
 		MessageName = erlmail_store:message_name(now()),
 		store_message(MessageName,erlmail_util:split_email(To),Message,State)
 		end,State#smtpd_fsm.rcpt).
 
-store_message(MessageName,{UserName,DomainName},Message,State) -> 
+store_message(MessageName,{UserName,DomainName},Message,#smtpd_fsm{relay = true} = State) -> 
+	case check_user({UserName,DomainName}) of
+		true ->
+			store_message(#message{
+				name={MessageName,UserName,DomainName},
+				message=Message},State);
+		false ->
+			?D({relay,non_local}),
+			SmtpOut = #outgoing_smtp{rcpt = erlmail_util:combine_email(UserName,DomainName)},
+			store_message(#message{
+				name={MessageName,SmtpOut,now()},
+				message=Message},State)
+	end;
+store_message(MessageName,{UserName,DomainName},Message,#smtpd_fsm{relay = false} = State) -> 
 	store_message(#message{
 		name={MessageName,UserName,DomainName},
 		message=Message},State).
