@@ -35,3 +35,17 @@
 %%%---------------------------------------------------------------------------------------
 -module(popd_app).
 -author('simpleenigma@gmail.com').
+-include("../include/pop.hrl").
+-behaviour(application).
+
+%% Application and Supervisor callbacks
+-export([start/2, stop/1]).
+
+%%----------------------------------------------------------------------
+%% Application behaviour callbacks
+%%----------------------------------------------------------------------
+start(_Type, _Args) ->
+    ListenPort = erlmail_util:get_app_env(server_imap_port, 110),
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, popd_fsm]).
+
+stop(_S) -> ok.

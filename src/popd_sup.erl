@@ -35,3 +35,61 @@
 %%%---------------------------------------------------------------------------------------
 -module(popd_sup).
 -author('simpleenigma@gmail.com').
+-include("../include/pop.hrl").
+
+-behaviour(supervisor).
+
+-export([init/1,start_link/0]).
+-export([start_client/0]).
+
+-define(MAX_RESTART,    5).
+-define(MAX_TIME,      60).
+
+start_link() ->
+    ListenPort = erlmail_util:get_app_env(server_pop_port, 110),
+	FSM = erlmail_util:get_app_env(server_pop_fsm, popd_fsm),
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, FSM]).
+
+
+%% A startup function for spawning new client connection handling FSM.
+%% To be called by the TCP listener process.
+start_client() -> supervisor:start_child(popd_client_sup, []).
+
+
+
+init([Port, Module]) ->
+    {ok,
+        {_SupFlags = {one_for_one, ?MAX_RESTART, ?MAX_TIME},
+            [% POP TCP Listener
+              {popd_listener,
+               {popd_listener,start_link,[Port,Module]},
+               permanent,
+               2000,
+               worker,
+               [popd_listener]
+              },% Client instance supervisor
+              {popd_client_sup,
+               {supervisor,start_link,[{local, popd_client_sup}, ?MODULE, [Module]]},
+               permanent,
+               infinity,
+               supervisor,
+               []
+              }
+            ]
+        }
+    };
+
+init([Module]) ->
+    {ok,
+        {_SupFlags = {simple_one_for_one, ?MAX_RESTART, ?MAX_TIME},
+            [% POPD Client
+              {undefined,
+               {Module,start_link,[]},
+               temporary,
+               2000,
+               worker,
+               []
+              }
+            ]
+        }
+    }.

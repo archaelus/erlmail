@@ -46,9 +46,9 @@
 -define(MAX_TIME,      60).
 
 start_link() ->
-    {ok,ListenPort} = application:get_env(erlmail,server_imap_port),
-    supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, imapd_fsm]).
-
+    ListenPort = erlmail_util:get_app_env(server_imap_port, 143),
+	FSM = erlmail_util:get_app_env(server_imap_fsm, imapd_fsm),
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [ListenPort, FSM]).
 
 %% A startup function for spawning new client connection handling FSM.
 %% To be called by the TCP listener process.

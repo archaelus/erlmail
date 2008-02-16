@@ -10,3 +10,17 @@
 -ifndef(CRLF_BIN).
 -define(CRLF_BIN, <<13,10>>).
 -endif.
+
+-record(popd, {
+	listener, % Listening socket
+	acceptor, % Asynchronous acceptor's internal reference
+	module    % FSM handling module
+	}).
+
+-record(popd_fsm,{
+	socket     = [],
+	addr       = [],
+	options    = [],
+	line       = [],
+	buff       = <<>>
+	}).
