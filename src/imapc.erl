@@ -3,7 +3,7 @@
 %%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
 %%% @doc        IMAP Client API
 %%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
-%%% @reference See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
+%%% @reference  See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version    0.0.6
 %%% @since      0.0.1
 %%% @end
