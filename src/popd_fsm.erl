@@ -92,6 +92,8 @@ init([]) ->
     inet:setopts(Socket, [{active, once}, binary]),
     {ok, {IP, _Port}} = inet:peername(Socket),
 	NextState = State#popd_fsm{socket=Socket, addr=IP},
+	Greeting = erlmail_util:get_app_env(server_pop_greeting,"ready."),
+	popd_util:send(["+OK ",Greeting],NextState),
     {next_state, 'WAIT_FOR_DATA', NextState, ?TIMEOUT};
 'WAIT_FOR_SOCKET'(Other, State) ->
     error_logger:error_msg("State: 'WAIT_FOR_SOCKET'. Unexpected message: ~p\n", [Other]),
@@ -103,11 +105,17 @@ init([]) ->
 	NewBuff = <<Buff/binary,Data/binary>>,
 %	?D(NewBuff),
 	case end_of_cmd(NewBuff) of
-		0 -> {next_state, 'WAIT_FOR_DATA', State#popd_fsm{buff = NewBuff}, ?TIMEOUT};
+		0 -> 
+			case NewBuff of
+				?CRLF_BIN -> 
+					NextState = popd_cmd:command(State#popd_fsm{line = [],buff = <<>>}),
+					{next_state, 'WAIT_FOR_DATA', NextState, ?TIMEOUT};
+				_ -> {next_state, 'WAIT_FOR_DATA', State#popd_fsm{buff = NewBuff}, ?TIMEOUT}
+			end;
+			
 		Pos ->
 			<<Line:Pos/binary,13,10,NextBuff/binary>> = NewBuff,
 			NextState = popd_cmd:command(State#popd_fsm{line = binary_to_list(Line),buff = NextBuff}),
-
 			{next_state, 'WAIT_FOR_DATA', NextState, ?TIMEOUT}
 	end;
     

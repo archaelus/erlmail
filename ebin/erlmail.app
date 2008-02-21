@@ -29,6 +29,7 @@
 
 	{server_pop_start, false},
 	{server_pop_port,110},
+	{server_pop_greeting,"ErlMail POP server ready."},
 
 	{store_type_domain, mnesia_store},
 	{store_type_user, mnesia_store},
@@ -45,9 +46,7 @@
 	{antispam_default_action,continue},
 	{antispam_pre_deliver_action,[]},
 	{antispam_post_deliver_action,[]}
-	
-	
-	
+
 	]}
  ]
 }.

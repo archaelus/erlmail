@@ -18,9 +18,18 @@
 	}).
 
 -record(popd_fsm,{
-	socket     = [],
-	addr       = [],
-	options    = [],
-	line       = [],
-	buff       = <<>>
+	socket  = [],
+	addr    = [],
+	options = [],
+	line    = [],
+	state   = authorization,
+	user    = undefined,
+	pass    = undefined,
+	buff    = <<>>
+	}).
+
+-record(popd_cmd,{
+	line = [],
+	cmd  = [],
+	data = []
 	}).

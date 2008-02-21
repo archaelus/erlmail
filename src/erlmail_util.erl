@@ -45,6 +45,7 @@
 -export([split_email/1,combine_email/1,combine_email/2]).
 -export([create/4,join/1,remove/1,check/1,check/4]).
 -export([split_at/1,split_at/2,rsplit_at/1,rsplit_at/2,unquote/1]).
+-export([to_lower_atom/1]).
 -export([get_app_env/2]).
 
 
@@ -144,7 +145,9 @@ unquote(String) ->
 
 
 
-
+to_lower_atom(Atom) when is_atom(Atom) -> to_lower_atom(atom_to_list(Atom));
+to_lower_atom(String) when is_list(String) ->
+	list_to_atom(string:to_lower(String)).
 
 
 

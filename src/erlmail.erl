@@ -79,6 +79,8 @@ reload() ->
 		imapd,imapd_listener,imapd_fsm,imapd_app,imapd_sup,imapd_util,imapd_cmd,imapd_util,imapd_ext,imapd_fetch,imapd_search,imapd_resp,
 		imap_parser,imap_scan,imapc,imapc_fsm,imapc_util,
 		mime,
+		popc,popc_fsm,
+		popd_app,popd_cmd,popd_fsm,popd_listener,popd_sum,popd_util,
 		smtpd_app,smtpd_sup,smtpd_fsm,smtpd_listener,smtpd_util,smtpd_cmd,smtpd_queue,
 		smtpc,smtpc_fsm,smtpc_util,
 		erlmail_test,erml_erlmail

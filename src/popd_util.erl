@@ -1,7 +1,7 @@
 %%%---------------------------------------------------------------------------------------
 %%% @author     Stuart Jackson <simpleenigma@gmail.com> [http://erlsoft.org]
 %%% @copyright  2006 - 2007 Simple Enigma, Inc. All Rights Reserved.
-%%% @doc        POP server commands 
+%%% @doc        POP server utility functions
 %%% @reference  See <a href="http://erlsoft.org/modules/erlmail" target="_top">Erlang Software Framework</a> for more information
 %%% @reference  See <a href="http://erlmail.googlecode.com" target="_top">ErlMail Google Code Repository</a> for more information
 %%% @version    0.0.6
@@ -33,38 +33,60 @@
 %%%
 %%%
 %%%---------------------------------------------------------------------------------------
--module(popd_cmd).
+-module(popd_util).
 -author('simpleenigma@gmail.com').
 -include("../include/pop.hrl").
 
--export([command/1,command/2]).
+
+
+-export([parse/2,send/2]).
+
+
+parse(Line,_State) -> 
+	{Cmd,Data} = erlmail_util:split_at(Line,32),
+	#popd_cmd{line = Line, cmd = erlmail_util:to_lower_atom(Cmd), data = Data}.
+
 
 %%-------------------------------------------------------------------------
-%% @spec (State::popd_fsm()) -> NewState::popd_fsm()
-%% @doc  Processes all POP commands and checks for extention processing
+%% @spec (Message::string(),Socket::port()) -> ok | {error,string()}
+%% @doc Sends a Message to Socket adds CRLF if needed.
 %% @end
 %%-------------------------------------------------------------------------
-command(#popd_fsm{line = Line} = State) -> 
-	Command = popd_util:parse(Line,State),
-	io:format("Command: ~p~n",[Command]),
-	command(Command,State).
+send([],_State) -> ok;
+send(ok,State) -> send("+OK",State);
+send(error,State) -> send("-ERR",State);
+send(Msg,State)  when is_record(State,popd_fsm) -> send(Msg,State#popd_fsm.socket);
+send(Message,Socket) ->
+	Msg = case string:right(Message,2) of
+		?CRLF -> [Message];
+		_     -> [Message,?CRLF]
+	end,
+	gen_tcp:send(Socket,Msg).
 
 
 
 
-command(#popd_cmd{cmd = quit} = _Cmd,
-		#popd_fsm{state = authorization} = State) ->
-	popd_util:send(ok,State),
-	gen_tcp:close(State#popd_fsm.socket),
-	gen_fsm:send_all_state_event(self(),stop),
-	State;
-command(#popd_cmd{cmd = quit} = _Cmd,
-		State) ->
-	popd_util:send(ok,State),
-	% Clean up routines to delete messages
-	gen_tcp:close(State#popd_fsm.socket),
-	gen_fsm:send_all_state_event(self(),stop),
-	State;
-command(#popd_cmd{cmd = _Command} = _Cmd,State) ->
-	popd_util:send(error,State),
-	State.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
