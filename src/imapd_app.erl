@@ -39,11 +39,8 @@
 
 -behaviour(application).
 
-
-
-%% Application and Supervisor callbacks
+%% Application callbacks
 -export([start/2, stop/1]).
-
 
 %%----------------------------------------------------------------------
 %% Application behaviour callbacks

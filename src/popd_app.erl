@@ -38,7 +38,7 @@
 -include("../include/pop.hrl").
 -behaviour(application).
 
-%% Application and Supervisor callbacks
+%% Application callbacks
 -export([start/2, stop/1]).
 
 %%----------------------------------------------------------------------
