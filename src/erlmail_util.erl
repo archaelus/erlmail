@@ -122,14 +122,14 @@ get_app_env(Opt, Default) ->
 		false -> application:load(?APPLICATION);
 		_ -> ok
 	end,
-    case application:get_env(?APPLICATION, Opt) of
-    {ok, Val} -> Val;
-    _ ->
-        case init:get_argument(Opt) of
-        [[Val | _]] -> Val;
-        error       -> Default
-        end
-    end.
+	case application:get_env(?APPLICATION, Opt) of
+	{ok, Val} -> Val;
+	_ ->
+		case init:get_argument(Opt) of
+		[[Val | _]] -> Val;
+		error		-> Default
+		end
+	end.
 
 
 %%-------------------------------------------------------------------------
