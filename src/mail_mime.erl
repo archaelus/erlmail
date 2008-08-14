@@ -13,7 +13,7 @@
 -export([encode/1, send/5,
          msg/0, msg/3, msg/4,
          from/1, to/1,
-         add_body_part/2]).
+         add_text_part/2]).
 
 -export([test_msg/0,
          send_test/4,
@@ -37,7 +37,7 @@ msg(To, From, Subject) ->
 
 msg(To, From, Subject, Body) ->
     Msg = msg(To, From, Subject),
-    add_body_part(Msg, Body).
+    add_text_part(Msg, Body).
 
 msg() ->
     #mime_msg{boundary=invent_mime_boundary(),
