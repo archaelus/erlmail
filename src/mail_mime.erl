@@ -55,6 +55,9 @@ from(#mime_msg{headers=H}) ->
         T -> {ok, T}
     end.
 
+add_text_part(Msg = #mime_msg{parts=Parts}, Text) ->
+    Msg#mime_msg{parts=Parts ++ [#mime_part{data=Text}]}.
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
