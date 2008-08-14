@@ -11,8 +11,9 @@
 
 %% API
 -export([encode/1, send/5,
-         msg/0, msg/3,
-         from/1, to/1]).
+         msg/0, msg/3, msg/4,
+         from/1, to/1,
+         add_body_part/2]).
 
 -export([test_msg/0,
          send_test/4,
