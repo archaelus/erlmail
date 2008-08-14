@@ -3,10 +3,11 @@ APP_NAME=erlmail
 NODE_NAME=erlmail
 VSN=0.0.6
 
-all:
-	( $(ERL) -make && \
-	if [ ! -e ebin/smptd.app ]; then cp -f src/smtpd.app.src ebin/smtpd.app; fi \
-	if [ ! -e ebin/imapd.app ]; then cp -f src/imapd.app.src ebin/imapd.app; fi )
+all: ebin/smtpd.app ebin/imapd.app ebin/smtpc.app $(wildcard src/*.erl)
+	$(ERL) -pa lib/*/ebin -I lib/*/include -make
+
+ebin/%.app: src/%.app.src
+	cp $< $@
 
 doc:	
 	$(ERL) -pa `pwd`/ebin \
