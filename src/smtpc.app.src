@@ -1,0 +1,8 @@
+{application, smtpc,
+    [{description, "Erlmail SMTP Client application"},
+     {vsn, "0.0.6"},
+     {modules, [mail_mime,
+                smtpc,
+                smtpc_fsm
+               ]},
+     {applications, [kernel, stdlib]}]}.
