@@ -34,6 +34,10 @@ msg(To, From, Subject) ->
                        {"Date", httpd_util:rfc1123_date()}
                       ]}.
 
+msg(To, From, Subject, Body) ->
+    Msg = msg(To, From, Subject),
+    add_body_part(Msg, Body).
+
 msg() ->
     #mime_msg{boundary=invent_mime_boundary(),
               headers=[{"Date", httpd_util:rfc1123_date()}]}.
