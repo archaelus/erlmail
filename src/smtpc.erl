@@ -172,6 +172,10 @@ vrfy(Pid,Address) -> gen_fsm:sync_send_event(Pid, {vrfy,Address}).
 %% Descrip.: Sends data of email message
 %% Returns : ok
 %%--------------------------------------------------------------------
+sendmail(From, To, Message) ->
+    {ok, Ehlo} = application:get_env(smtpc, ehlo),
+    {ok, {Host, Port}} = application:get_env(smtpc, smarthost),
+    sendmail(Host, Port, Ehlo, From, To, Message).
 sendmail(IPAddress,From,To,Message) -> sendmail(IPAddress,25,"ErlMail",From,To,Message).
 sendmail(IPAddress,Host,From,To,Message) -> sendmail(IPAddress,25,Host,From,To,Message).
 sendmail(IPAddress,Port,Host,From,To,Message) ->
