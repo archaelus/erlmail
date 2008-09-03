@@ -45,16 +45,10 @@ encode(Msg) ->
         "--" ++ Msg#mime_msg.boundary ++ "--\r\n".
 
 to(#mime_msg{headers=H}) ->
-    case proplists:get_value("To", H, undefined) of
-        undefined -> undefined;
-        T -> {ok, T}
-    end.
+    proplists:get_value("To", H, undefined).
 
 from(#mime_msg{headers=H}) ->
-    case proplists:get_value("From", H, undefined) of
-        undefined -> undefined;
-        T -> {ok, T}
-    end.
+    proplists:get_value("From", H, undefined).
 
 add_text_part(Msg = #mime_msg{parts=Parts}, Text) ->
     Msg#mime_msg{parts=Parts ++ [#mime_part{data=Text}]}.
