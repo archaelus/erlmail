@@ -59,9 +59,9 @@ add_text_part(Msg = #mime_msg{parts=Parts}, Text) ->
 
 test_msg() ->
     #mime_msg{boundary=invent_mime_boundary(),
-              headers=[{"To", "Geoff Cant <geoff@catalyst.net.nz>"},
+              headers=[{"To", "Geoff Cant <geoff@example.com>"},
                        {"Subject", "Daily Report"},
-                       {"From", "Geoff on Thales <geoff@thales.catalyst.net.nz>"},
+                       {"From", "Geoff Cant <geoff@example.com>"},
                        {"Date", httpd_util:rfc1123_date()}
                       ],
               parts=[#mime_part{data="This is a test..."},
