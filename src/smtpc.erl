@@ -39,7 +39,7 @@
 
 -export([connect/1,help/1,noop/1,quit/1,rcpt/2,rset/1,vrfy/2]).
 -export([connect/2,data/2,ehlo/2,etrn/2,expn/2,helo/2,mail/2]).
--export([sendmail/4,sendmail/5,sendmail/6]).
+-export([sendmail/3,sendmail/4,sendmail/5,sendmail/6]).
 
 %%-------------------------------------------------------------------------
 %% @spec (IpAddress::term()) -> {ok,Pid::pid()} | {error,Reason::atom()}
